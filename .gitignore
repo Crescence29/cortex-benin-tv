@@ -1,0 +1,36 @@
+# Secrets — ne jamais committer
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+
+# Dependencies
+node_modules
+**/node_modules
+
+# Build output
+dist
+dist-ssr
+**/dist
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.local
+
+# Vidéos volumineuses (plusieurs centaines de Mo — dépasse la limite GitHub de 100 Mo/fichier)
+frontend/public/vidéo/
+
+# Fichiers de logs de serveurs locaux
+backend/backend_wamp.log
+backend/server.log
+frontend/frontend_wamp.log
+frontend/vite.log

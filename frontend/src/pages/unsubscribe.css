@@ -1,0 +1,92 @@
+.unsub-page {
+  min-height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.unsub-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 36px 32px;
+  text-align: center;
+}
+
+.unsub-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(212, 20, 31, 0.1);
+  color: var(--red);
+  margin-bottom: 18px;
+}
+
+.unsub-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.unsub-card h1 {
+  font-size: 1.25rem;
+  font-weight: 900;
+  margin: 0 0 14px;
+  color: var(--text);
+}
+
+.unsub-card p {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 0 0 20px;
+}
+
+.unsub-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.unsub-card input {
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.92rem;
+  outline: none;
+}
+
+.unsub-card input:focus {
+  border-color: var(--red);
+}
+
+.unsub-error {
+  color: var(--red-bright);
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin: -8px 0 0 !important;
+}
+
+.unsub-success {
+  color: #1b7a45;
+}
+
+.unsub-btn {
+  display: inline-block;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--red-bright), var(--red-dark));
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-decoration: none;
+}

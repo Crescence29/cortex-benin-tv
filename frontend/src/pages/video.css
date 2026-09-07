@@ -1,0 +1,205 @@
+.vid-page {
+  padding-bottom: 20px;
+}
+
+.vid-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  padding: 20px 20px 0;
+  color: var(--text-muted);
+}
+
+.vid-breadcrumb a {
+  color: var(--text-muted);
+}
+
+.vid-breadcrumb a:hover {
+  color: var(--red);
+}
+
+.vid-breadcrumb span {
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.vid-page__inner {
+  max-width: 900px;
+  padding: 18px 20px 0;
+}
+
+.vid-player {
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+  margin-bottom: 20px;
+}
+
+.ap-player {
+  margin-bottom: 20px;
+}
+
+.vid-player video {
+  width: 100%;
+  max-height: 70vh;
+  display: block;
+}
+
+.vid-category {
+  display: inline-block;
+  color: var(--red);
+  font-weight: 800;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 10px;
+}
+
+.vid-page__inner h1 {
+  font-size: 1.7rem;
+  font-weight: 900;
+  line-height: 1.25;
+  margin: 0 0 14px;
+  color: var(--text);
+}
+
+.vid-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-bottom: 18px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.vid-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.vid-meta svg {
+  width: 14px;
+  height: 14px;
+}
+
+.vid-description {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--text);
+  margin: 0 0 20px;
+}
+
+.vid-share {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 0;
+  border-top: 1px solid var(--border);
+}
+
+.vid-share > span:first-child {
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.vid-share a,
+.vid-share button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.vid-share a:hover,
+.vid-share button:hover {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+}
+
+.vid-share svg {
+  width: 16px;
+  height: 16px;
+}
+
+.vid-share__copied {
+  color: var(--red);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.vid-related {
+  max-width: 1160px;
+  padding: 10px 20px 60px;
+  margin-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.vid-related h2 {
+  font-size: 1.15rem;
+  font-weight: 900;
+  margin: 26px 0 20px;
+  color: var(--text);
+}
+
+.vid-related__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.vid-related__card {
+  display: block;
+  text-decoration: none;
+}
+
+.vid-related__media {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #4a1013 0%, #2a0508 55%, #1a0305 100%);
+  margin-bottom: 10px;
+}
+
+.vid-related__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.vid-related__placeholder {
+  width: 100%;
+  height: 100%;
+}
+
+.vid-related__program {
+  display: block;
+  color: var(--red);
+  font-weight: 800;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.vid-related__card h3 {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 800;
+  line-height: 1.35;
+  color: var(--text);
+}

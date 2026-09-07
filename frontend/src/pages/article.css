@@ -1,0 +1,245 @@
+.art-page {
+  padding-bottom: 20px;
+}
+
+.art-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  padding: 20px 20px 0;
+  color: var(--text-muted);
+}
+
+.art-breadcrumb a {
+  color: var(--text-muted);
+}
+
+.art-breadcrumb a:hover {
+  color: var(--red);
+}
+
+.art-breadcrumb span {
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.art-page__inner {
+  max-width: 760px;
+  padding: 18px 20px 0;
+}
+
+.art-category {
+  display: inline-block;
+  color: var(--red);
+  font-weight: 800;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 10px;
+}
+
+.art-page__inner h1 {
+  font-size: 2rem;
+  font-weight: 900;
+  line-height: 1.2;
+  margin: 0 0 14px;
+  color: var(--text);
+}
+
+.art-excerpt {
+  font-size: 1.08rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin: 0 0 18px;
+}
+
+.art-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-bottom: 20px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.art-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.art-meta svg {
+  width: 14px;
+  height: 14px;
+}
+
+.art-meta strong {
+  color: var(--text);
+}
+
+.art-cover {
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 28px;
+}
+
+.art-cover img {
+  width: 100%;
+  display: block;
+}
+
+.art-body {
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+.art-page__content {
+  font-size: 1.08rem;
+  line-height: 1.8;
+  color: var(--text);
+}
+
+.art-page__content p {
+  margin: 0 0 20px;
+}
+
+.art-page__content img {
+  max-width: 100%;
+  border-radius: 8px;
+}
+
+.art-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 30px 0 20px;
+}
+
+.art-tags__pill {
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.art-share {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 0;
+  border-top: 1px solid var(--border);
+  margin-top: 10px;
+}
+
+.art-share > span:first-child {
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.art-share a,
+.art-share button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.art-share a:hover,
+.art-share button:hover {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+}
+
+.art-share svg {
+  width: 16px;
+  height: 16px;
+}
+
+.art-share__copied {
+  color: var(--red);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.art-related {
+  max-width: 1160px;
+  padding: 20px 20px 60px;
+  margin-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.art-related h2 {
+  font-size: 1.15rem;
+  font-weight: 900;
+  margin: 26px 0 20px;
+  color: var(--text);
+}
+
+.art-related__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.art-related__card {
+  display: block;
+  text-decoration: none;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.art-related__card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.15);
+}
+
+.art-related__media {
+  aspect-ratio: 4 / 3;
+  background: linear-gradient(135deg, #4a1013 0%, #2a0508 55%, #1a0305 100%);
+}
+
+.art-related__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.art-related__placeholder {
+  width: 100%;
+  height: 100%;
+}
+
+.art-related__card h3 {
+  margin: 14px 16px 8px;
+  font-size: 0.92rem;
+  font-weight: 800;
+  line-height: 1.35;
+  color: var(--text);
+}
+
+.art-related__card span {
+  display: block;
+  margin: 0 16px 14px;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+}
