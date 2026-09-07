@@ -111,18 +111,22 @@ export default function Footer() {
 
         <div className="footer-col">
           <h3>À propos</h3>
-          <Link to="/a-propos">Qui sommes-nous ?</Link>
-          <Link to="/contact">Nous contacter</Link>
-          <Link to="/mentions-legales">Mentions légales</Link>
-          <Link to="/confidentialite">Confidentialité</Link>
+          <div className="footer-links-grid">
+            <Link to="/a-propos">Qui sommes-nous ?</Link>
+            <Link to="/contact">Nous contacter</Link>
+            <Link to="/mentions-legales">Mentions légales</Link>
+            <Link to="/confidentialite">Confidentialité</Link>
+          </div>
         </div>
 
         <div className="footer-col">
           <h3>Accès rapide</h3>
-          <Link to="/direct">En direct</Link>
-          <Link to="/videos">Vidéos</Link>
-          <Link to="/grille-tv">Grille des programmes</Link>
-          <Link to="/recherche">Recherche</Link>
+          <div className="footer-links-grid">
+            <Link to="/direct">En direct</Link>
+            <Link to="/videos">Vidéos</Link>
+            <Link to="/grille-tv">Grille des programmes</Link>
+            <Link to="/recherche">Recherche</Link>
+          </div>
         </div>
 
         <div className="footer-col" id="services">

@@ -765,6 +765,11 @@
   .footer-grid {
     grid-template-columns: 1fr;
   }
+  .footer-prestations {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 12px;
+  }
 }
 
 /* Admin */
