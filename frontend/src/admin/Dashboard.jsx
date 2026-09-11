@@ -176,7 +176,7 @@ export default function Dashboard() {
         <StatCard icon={IconDoc} value={articles.length} label="Articles" />
         <StatCard icon={IconVideo} value={videos.length} label="Vidéos" />
         <StatCard icon={IconEye} value={totalViews ?? publishedCount} label={totalViews !== null ? 'Vues totales' : 'Publiés'} />
-        <StatCard icon={IconUsers} value={users.length} label="Comptes admin" />
+        {user?.role === 'admin' && <StatCard icon={IconUsers} value={users.length} label="Comptes admin" />}
         <StatCard icon={IconMail} value={newsletterCount} label="Abonnés newsletter" to="/admin/newsletter" />
         <StatCard icon={IconMail} value={unreadMessages} label="Messages non lus" to="/admin/messages" />
         <StatCard icon={IconAlertTriangle} value={pendingReviewCount} label="Articles à valider" to="/admin/articles?status=pending_review" />
