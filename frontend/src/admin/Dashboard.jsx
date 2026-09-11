@@ -15,6 +15,7 @@ import {
   IconUsers,
   IconShield,
   IconMail,
+  IconAlertTriangle,
 } from '../components/Icons';
 
 function StatCard({ icon: Icon, value, label, to }) {
@@ -144,6 +145,7 @@ export default function Dashboard() {
 
   const unreadMessages = messages.filter((m) => !m.is_read).length;
   const publishedCount = articles.filter((a) => a.status === 'published').length;
+  const pendingReviewCount = articles.filter((a) => a.status === 'pending_review').length;
   const editorCount = users.filter((u) => u.role === 'editor').length;
   const adminCount = users.filter((u) => u.role === 'admin').length;
   const totalViews = analytics ? analytics.articles.views + analytics.videos.views : null;
@@ -177,6 +179,7 @@ export default function Dashboard() {
         <StatCard icon={IconUsers} value={users.length} label="Comptes admin" />
         <StatCard icon={IconMail} value={newsletterCount} label="Abonnés newsletter" to="/admin/newsletter" />
         <StatCard icon={IconMail} value={unreadMessages} label="Messages non lus" to="/admin/messages" />
+        <StatCard icon={IconAlertTriangle} value={pendingReviewCount} label="Articles à valider" to="/admin/articles?status=pending_review" />
       </div>
 
       <div className="dashboard-triple">

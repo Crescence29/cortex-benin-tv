@@ -28,7 +28,7 @@ export default function ArticlesList() {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState('');
   const [category, setCategory] = useState(searchParams.get('category') || '');
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useState(searchParams.get('status') || '');
   const [author, setAuthor] = useState('');
 
   useEffect(() => {
