@@ -44,6 +44,72 @@ function ResetPasswordRow({ user, onDone }) {
   );
 }
 
+function DeveloperAccessToggle({ user, onDone }) {
+  const [pending, setPending] = useState(null); // { code, desired }
+  const [input, setInput] = useState('');
+  const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  async function onStart() {
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await api.startDeveloperAccess(user.id);
+      setPending(res);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onConfirm(e) {
+    e.preventDefault();
+    setError(null);
+    setBusy(true);
+    try {
+      await api.confirmDeveloperAccess(user.id, input);
+      setPending(null);
+      setInput('');
+      onDone();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!pending) {
+    return (
+      <button type="button" className="btn btn--sm btn--outline dev-access-btn" onClick={onStart} disabled={busy}>
+        {user.is_developer ? 'Retirer accès développeur' : 'Accorder accès développeur'}
+      </button>
+    );
+  }
+
+  return (
+    <form onSubmit={onConfirm} className="dev-access-confirm">
+      <p>
+        Code de confirmation généré : <strong>{pending.code}</strong>
+        <br />
+        Retape-le ci-dessous pour {pending.desired ? 'accorder' : 'retirer'} l'accès développeur à {user.name}.
+      </p>
+      <input
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        placeholder="Code à 6 chiffres"
+        autoFocus
+        required
+      />
+      <button type="submit" className="btn btn--sm" disabled={busy}>Confirmer</button>
+      <button type="button" className="btn btn--sm btn--outline" onClick={() => { setPending(null); setInput(''); setError(null); }}>
+        Annuler
+      </button>
+      {error && <span className="admin-form__error" style={{ margin: 0 }}>{error}</span>}
+    </form>
+  );
+}
+
 function formatDate(value) {
   if (!value) return 'Jamais connecté';
   return new Date(value).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
@@ -126,15 +192,6 @@ export default function RolesUsers() {
     if (!confirm(`Confirmer : ${label} le compte de ${u.name} ?`)) return;
     try {
       await api.updateUser(u.id, { is_active: !u.is_active });
-      load();
-    } catch (err) {
-      alert(err.message);
-    }
-  }
-
-  async function onToggleDeveloper(u) {
-    try {
-      await api.updateUser(u.id, { is_developer: !u.is_developer });
       load();
     } catch (err) {
       alert(err.message);
@@ -247,15 +304,11 @@ export default function RolesUsers() {
                       ) : (
                         ROLE_LABELS[u.role] || u.role
                       )}
+                      {!!u.is_developer && <span className="dev-flag-badge">Développeur</span>}
                       {me?.is_developer && (
-                        <label className="dev-flag-toggle">
-                          <input
-                            type="checkbox"
-                            checked={!!u.is_developer}
-                            onChange={() => onToggleDeveloper(u)}
-                          />
-                          Développeur
-                        </label>
+                        <div className="dev-access-cell">
+                          <DeveloperAccessToggle user={u} onDone={load} />
+                        </div>
                       )}
                     </td>
                     <td>

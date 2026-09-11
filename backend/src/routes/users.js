@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
+import crypto from 'node:crypto';
 import { pool } from '../db/pool.js';
 import { requireAuth } from '../middleware/auth.js';
 import { logActivity, clientIp } from '../lib/logActivity.js';
@@ -10,6 +11,19 @@ const router = Router();
 async function getTargetUser(id) {
   const [[row]] = await pool.query('SELECT * FROM users WHERE id = ?', [id]);
   return row;
+}
+
+// Demandes en attente de confirmation pour accorder/retirer l'accès développeur.
+// Volontairement en mémoire (pas en base) : c'est une friction anti-clic-accidentel
+// de courte durée, pas un vrai secret à protéger sur le long terme.
+const pendingDeveloperAccess = new Map();
+const DEVELOPER_ACCESS_TTL_MS = 5 * 60 * 1000;
+
+function cleanupPendingDeveloperAccess() {
+  const now = Date.now();
+  for (const [id, entry] of pendingDeveloperAccess) {
+    if (entry.expiresAt < now) pendingDeveloperAccess.delete(id);
+  }
 }
 
 router.get('/', requireAuth, async (req, res) => {
@@ -61,6 +75,57 @@ router.post('/:id/force-logout', requireAuth, requireMinRole('admin'), async (re
   res.json({ ok: true, sessionsRevoked: result.affectedRows });
 });
 
+router.post('/:id/developer-access/start', requireAuth, async (req, res) => {
+  if (!req.user.is_developer) {
+    return res.status(403).json({ error: "Seul un compte développeur peut accorder ou retirer cet accès" });
+  }
+  const target = await getTargetUser(req.params.id);
+  if (!target) return res.status(404).json({ error: 'Utilisateur introuvable' });
+
+  cleanupPendingDeveloperAccess();
+  const desired = !target.is_developer;
+  const code = crypto.randomInt(100000, 1000000).toString();
+  pendingDeveloperAccess.set(req.params.id, {
+    code,
+    desired,
+    actorId: req.user.id,
+    expiresAt: Date.now() + DEVELOPER_ACCESS_TTL_MS,
+  });
+  res.json({ code, desired, expiresInSeconds: DEVELOPER_ACCESS_TTL_MS / 1000 });
+});
+
+router.post('/:id/developer-access/confirm', requireAuth, async (req, res) => {
+  if (!req.user.is_developer) {
+    return res.status(403).json({ error: "Seul un compte développeur peut accorder ou retirer cet accès" });
+  }
+  const { code } = req.body;
+  const pending = pendingDeveloperAccess.get(req.params.id);
+  if (!pending || pending.actorId !== req.user.id || pending.expiresAt < Date.now()) {
+    return res.status(400).json({ error: 'Code expiré ou demande introuvable, recommencez' });
+  }
+  if (pending.code !== String(code || '')) {
+    return res.status(400).json({ error: 'Code incorrect' });
+  }
+  const target = await getTargetUser(req.params.id);
+  if (!target) return res.status(404).json({ error: 'Utilisateur introuvable' });
+
+  await pool.query('UPDATE users SET is_developer = ? WHERE id = ?', [pending.desired, req.params.id]);
+  pendingDeveloperAccess.delete(req.params.id);
+
+  await logActivity({
+    actorId: req.user.id,
+    actorName: req.user.name,
+    actorRole: req.user.role,
+    action: pending.desired ? 'developer_access_granted' : 'developer_access_revoked',
+    targetType: 'user',
+    targetId: req.params.id,
+    details: target.name,
+    ip: clientIp(req),
+  });
+
+  res.json({ ok: true, is_developer: pending.desired });
+});
+
 router.post('/', requireAuth, requireMinRole('admin'), async (req, res) => {
   const { name, email, password, role } = req.body;
   if (!name || !email || !password) {
@@ -94,7 +159,7 @@ router.post('/', requireAuth, requireMinRole('admin'), async (req, res) => {
 });
 
 router.put('/:id', requireAuth, async (req, res) => {
-  const { name, role, password, is_active, is_developer } = req.body;
+  const { name, role, password, is_active } = req.body;
   const existing = await getTargetUser(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Utilisateur introuvable' });
 
@@ -102,11 +167,11 @@ router.put('/:id', requireAuth, async (req, res) => {
   const managingTarget = canManage(req.user.role, existing.role);
 
   // Modifier le nom ou son propre mot de passe reste toujours possible pour
-  // soi-même ; tout le reste (rôle, activation, flag développeur, mot de
-  // passe d'un tiers) exige d'avoir un rang strictement supérieur à la cible.
+  // soi-même ; le reste (rôle, activation, mot de passe d'un tiers) exige un
+  // rang strictement supérieur à la cible. Le flag développeur ne passe pas
+  // par ici : voir /developer-access/start et /confirm (confirmation par code).
   const wantsRoleChange = role && role !== existing.role;
   const wantsActiveChange = is_active !== undefined && !!is_active !== !!existing.is_active;
-  const wantsDeveloperChange = is_developer !== undefined && !!is_developer !== !!existing.is_developer;
   const wantsPasswordChangeForOther = password && !isSelf;
 
   if (wantsActiveChange && is_active === false && isSelf) {
@@ -118,27 +183,21 @@ router.put('/:id', requireAuth, async (req, res) => {
   if (wantsRoleChange && !canManage(req.user.role, role)) {
     return res.status(403).json({ error: 'Vous ne pouvez pas attribuer ce rôle' });
   }
-  // Le flag développeur ne se transmet que d'un développeur à un autre compte —
-  // volontairement séparé de la hiérarchie métier.
-  if (wantsDeveloperChange && !req.user.is_developer) {
-    return res.status(403).json({ error: "Seul un compte développeur peut accorder ou retirer cet accès" });
-  }
 
   const nextRole = wantsRoleChange ? role : existing.role;
   const nextActive = wantsActiveChange ? !!is_active : existing.is_active;
-  const nextDeveloper = wantsDeveloperChange ? !!is_developer : existing.is_developer;
   const nextName = name ?? existing.name;
 
   if (password) {
     const hash = await bcrypt.hash(password, 10);
     await pool.query(
-      'UPDATE users SET name=?, role=?, is_active=?, is_developer=?, password_hash=? WHERE id=?',
-      [nextName, nextRole, nextActive, nextDeveloper, hash, req.params.id]
+      'UPDATE users SET name=?, role=?, is_active=?, password_hash=? WHERE id=?',
+      [nextName, nextRole, nextActive, hash, req.params.id]
     );
   } else {
     await pool.query(
-      'UPDATE users SET name=?, role=?, is_active=?, is_developer=? WHERE id=?',
-      [nextName, nextRole, nextActive, nextDeveloper, req.params.id]
+      'UPDATE users SET name=?, role=?, is_active=? WHERE id=?',
+      [nextName, nextRole, nextActive, req.params.id]
     );
   }
 

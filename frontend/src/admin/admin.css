@@ -763,14 +763,44 @@
   white-space: nowrap;
 }
 
-.dev-flag-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: 10px;
-  font-size: 0.75rem;
+.dev-flag-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--red-bright) 18%, transparent);
+  color: var(--red-bright);
+}
+
+.dev-access-cell {
+  margin-top: 6px;
+}
+
+.dev-access-btn {
+  font-size: 0.72rem;
+  padding: 4px 10px;
+}
+
+.dev-access-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--bg);
+  max-width: 320px;
+}
+
+.dev-access-confirm p {
+  margin: 0;
+  font-size: 0.8rem;
   color: var(--text-muted);
-  cursor: pointer;
+}
+
+.dev-access-confirm input {
+  width: 100%;
 }
 
 .lang-pills {
