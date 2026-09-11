@@ -47,11 +47,80 @@ function StatusDot({ ok }) {
   return <span className={'status-dot-inline' + (ok ? ' is-ok' : ' is-down')} />;
 }
 
+function RouteList({ routes }) {
+  if (!routes || routes.length === 0) return <p className="admin-empty">Aucune requête enregistrée pour le moment.</p>;
+  return (
+    <ul className="detail-list">
+      {routes.map((r) => (
+        <li key={r.route}>
+          <code>{r.route}</code>
+          <span>{r.count} appel{r.count > 1 ? 's' : ''}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function LoginList({ logins }) {
+  if (!logins || logins.length === 0) return <p className="admin-empty">Aucune connexion enregistrée pour le moment.</p>;
+  return (
+    <ul className="detail-list">
+      {logins.map((l, i) => (
+        <li key={i}>
+          <span>{l.actor_name || 'Inconnu'} {l.actor_role ? `(${l.actor_role})` : ''}{l.ip_address ? ` · ${l.ip_address}` : ''}</span>
+          <span>{new Date(l.created_at).toLocaleString()}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function TableSizeList({ tables }) {
+  if (!tables || tables.length === 0) return <p className="admin-empty">Détail indisponible.</p>;
+  return (
+    <ul className="detail-list">
+      {tables.map((t) => (
+        <li key={t.table}>
+          <code>{t.table}</code>
+          <span>{formatBytes(t.sizeBytes)} · {Number(t.rows).toLocaleString()} lignes (estimation)</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ResponseTimeList({ samples }) {
+  if (!samples || samples.length === 0) return <p className="admin-empty">Pas encore assez de requêtes pour un détail.</p>;
+  return (
+    <p className="admin-empty" style={{ padding: '10px 20px', lineHeight: 1.8 }}>
+      {samples.length} dernières mesures (ms) : {samples.join(', ')}
+    </p>
+  );
+}
+
+function DetailRow({ label, value, detailKey, openKey, setOpenKey, children, statusOk }) {
+  const open = openKey === detailKey;
+  return (
+    <>
+      <button
+        type="button"
+        className="system-status-row system-status-row--clickable"
+        onClick={() => setOpenKey(open ? null : detailKey)}
+      >
+        <span>{statusOk !== undefined && <StatusDot ok={statusOk} />} {label}</span>
+        <span>{value}</span>
+      </button>
+      {open && <div className="system-status-detail">{children}</div>}
+    </>
+  );
+}
+
 function SystemStatusPanel() {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [backing, setBacking] = useState(false);
   const [backupMsg, setBackupMsg] = useState(null);
+  const [openKey, setOpenKey] = useState(null);
 
   function load() {
     api.getSystemStatus().then(setStatus).finally(() => setLoading(false));
@@ -108,81 +177,133 @@ function SystemStatusPanel() {
       {backupMsg && <p className="admin-form__success" style={{ padding: '0 20px' }}>{backupMsg}</p>}
 
       <div className="system-status-grid">
-        <div className="system-status-row">
-          <span><StatusDot ok={status.api === 'ok'} /> API</span>
-          <span>{status.api === 'ok' ? 'Opérationnelle' : 'Problème'}</span>
-        </div>
-        <div className="system-status-row">
-          <span><StatusDot ok={status.db === 'ok'} /> Base de données</span>
-          <span>{status.db === 'ok' ? `Opérationnelle (${status.dbLatencyMs} ms)` : 'Problème'}</span>
-        </div>
-        <div className="system-status-row">
-          <span>Temps de réponse moyen</span>
-          <span>{status.avgResponseTimeMs != null ? `${status.avgResponseTimeMs} ms` : '—'}</span>
-        </div>
-        <div className="system-status-row">
-          <span>Requêtes traitées</span>
-          <span>{status.requestCount.toLocaleString()} (depuis le dernier redémarrage)</span>
-        </div>
-        <div className="system-status-row">
-          <span>Erreurs serveur</span>
-          <span>{status.errorCount} (depuis le dernier redémarrage)</span>
-        </div>
-        <div className="system-status-row">
-          <span>Connexions (24 h)</span>
-          <span>
-            {status.loginsLast24h} {status.lastLoginAt ? `· dernière : ${new Date(status.lastLoginAt).toLocaleString()}` : ''}
-          </span>
-        </div>
-        <div className="system-status-row">
-          <span>Disponibilité du serveur</span>
-          <span>{formatUptime(status.uptimeSeconds)}</span>
-        </div>
-        <div className="system-status-row">
-          <span>CPU (charge 1 min)</span>
-          <span>{status.cpuLoad1m.toFixed(2)} sur {status.cpuCount} cœur{status.cpuCount > 1 ? 's' : ''}</span>
-        </div>
-        <div className="system-status-row">
-          <span>Mémoire (RAM)</span>
-          <span>{memPct != null ? `${memPct}% utilisée` : '—'} ({formatBytes(status.memory?.usedBytes)} / {formatBytes(status.memory?.totalBytes)})</span>
-        </div>
-        <div className="system-status-row">
-          <span>Espace disque</span>
-          <span>{status.disk ? `${diskPct}% utilisé (${formatBytes(status.disk.usedBytes)} / ${formatBytes(status.disk.totalBytes)})` : 'Non disponible sur cet hébergement'}</span>
-        </div>
-        <div className="system-status-row">
-          <span>Version de l'application</span>
-          <span>{status.version}</span>
-        </div>
-        <div className="system-status-row">
-          <span>Dernier déploiement</span>
-          <span>{status.deployCommit ? status.deployCommit.slice(0, 7) : 'Non communiqué par l’hébergeur'}</span>
-        </div>
-        <div className="system-status-row">
-          <span>Dernière sauvegarde</span>
-          <span>{status.lastBackupAt ? new Date(status.lastBackupAt).toLocaleString() : 'Aucune sauvegarde effectuée pour le moment'}</span>
-        </div>
-      </div>
+        <DetailRow
+          label="API" detailKey="api" openKey={openKey} setOpenKey={setOpenKey}
+          statusOk={status.api === 'ok'} value={status.api === 'ok' ? 'Opérationnelle' : 'Problème'}
+        >
+          <p className="admin-empty" style={{ padding: '10px 20px' }}>Dernière vérification : {new Date(status.checkedAt).toLocaleString()}</p>
+        </DetailRow>
 
-      {status.recentErrors.length > 0 && (
-        <>
-          <div className="admin-panel__header" style={{ marginTop: 20 }}>
-            <h2 style={{ fontSize: '0.95rem' }}>Erreurs récentes</h2>
-          </div>
-          <div className="activity-log">
-            {status.recentErrors.map((e, i) => (
-              <div className="activity-log__row" key={i}>
-                <span className="activity-log__icon is-sensitive"><IconAlertTriangle /></span>
-                <div className="activity-log__body">
-                  <div className="activity-log__line"><strong>{e.message}</strong></div>
-                  <div className="activity-log__meta">{e.method} {e.path}</div>
+        <DetailRow
+          label="Base de données" detailKey="db" openKey={openKey} setOpenKey={setOpenKey}
+          statusOk={status.db === 'ok'}
+          value={status.db === 'ok' ? `Opérationnelle (${status.dbLatencyMs} ms)` : 'Problème'}
+        >
+          <TableSizeList tables={status.tableSizes} />
+        </DetailRow>
+
+        <DetailRow
+          label="Temps de réponse moyen" detailKey="response" openKey={openKey} setOpenKey={setOpenKey}
+          value={status.avgResponseTimeMs != null ? `${status.avgResponseTimeMs} ms` : '—'}
+        >
+          <ResponseTimeList samples={status.responseTimeSamples} />
+        </DetailRow>
+
+        <DetailRow
+          label="Requêtes traitées" detailKey="requests" openKey={openKey} setOpenKey={setOpenKey}
+          value={`${status.requestCount.toLocaleString()} (depuis le dernier redémarrage)`}
+        >
+          <RouteList routes={status.topRoutes} />
+        </DetailRow>
+
+        <DetailRow
+          label="Erreurs serveur" detailKey="errors" openKey={openKey} setOpenKey={setOpenKey}
+          value={`${status.errorCount} (depuis le dernier redémarrage)`}
+        >
+          {status.recentErrors.length === 0 ? (
+            <p className="admin-empty" style={{ padding: '10px 20px' }}>Aucune erreur depuis le dernier redémarrage.</p>
+          ) : (
+            <div className="activity-log">
+              {status.recentErrors.map((e, i) => (
+                <div className="activity-log__row" key={i}>
+                  <span className="activity-log__icon is-sensitive"><IconAlertTriangle /></span>
+                  <div className="activity-log__body">
+                    <div className="activity-log__line"><strong>{e.message}</strong></div>
+                    <div className="activity-log__meta">{e.method} {e.path}</div>
+                  </div>
+                  <div className="activity-log__time">{new Date(e.at).toLocaleString()}</div>
                 </div>
-                <div className="activity-log__time">{new Date(e.at).toLocaleString()}</div>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
+              ))}
+            </div>
+          )}
+        </DetailRow>
+
+        <DetailRow
+          label="Connexions (24 h)" detailKey="logins" openKey={openKey} setOpenKey={setOpenKey}
+          value={`${status.loginsLast24h}${status.lastLoginAt ? ` · dernière : ${new Date(status.lastLoginAt).toLocaleString()}` : ''}`}
+        >
+          <LoginList logins={status.recentLogins} />
+        </DetailRow>
+
+        <DetailRow
+          label="Disponibilité du serveur" detailKey="uptime" openKey={openKey} setOpenKey={setOpenKey}
+          value={formatUptime(status.uptimeSeconds)}
+        >
+          <p className="admin-empty" style={{ padding: '10px 20px' }}>
+            Démarré le {new Date(Date.now() - status.uptimeSeconds * 1000).toLocaleString()}
+          </p>
+        </DetailRow>
+
+        <DetailRow
+          label="CPU (charge 1 min)" detailKey="cpu" openKey={openKey} setOpenKey={setOpenKey}
+          value={`${status.cpuLoad1m.toFixed(2)} sur ${status.cpuCount} cœur${status.cpuCount > 1 ? 's' : ''}`}
+        >
+          <ul className="detail-list">
+            <li><span>Charge moyenne (1 min)</span><span>{status.cpuLoad1m.toFixed(2)}</span></li>
+            <li><span>Charge moyenne (5 min)</span><span>{status.cpuLoad5m.toFixed(2)}</span></li>
+            <li><span>Charge moyenne (15 min)</span><span>{status.cpuLoad15m.toFixed(2)}</span></li>
+          </ul>
+        </DetailRow>
+
+        <DetailRow
+          label="Mémoire (RAM)" detailKey="ram" openKey={openKey} setOpenKey={setOpenKey}
+          value={`${memPct != null ? `${memPct}% utilisée` : '—'} (${formatBytes(status.memory?.usedBytes)} / ${formatBytes(status.memory?.totalBytes)})`}
+        >
+          <ul className="detail-list">
+            <li><span>Mémoire du process (RSS)</span><span>{formatBytes(status.processMemory?.rss)}</span></li>
+            <li><span>Tas JavaScript utilisé</span><span>{formatBytes(status.processMemory?.heapUsed)}</span></li>
+            <li><span>Tas JavaScript alloué</span><span>{formatBytes(status.processMemory?.heapTotal)}</span></li>
+          </ul>
+        </DetailRow>
+
+        <DetailRow
+          label="Espace disque" detailKey="disk" openKey={openKey} setOpenKey={setOpenKey}
+          value={status.disk ? `${diskPct}% utilisé (${formatBytes(status.disk.usedBytes)} / ${formatBytes(status.disk.totalBytes)})` : 'Non disponible sur cet hébergement'}
+        >
+          <TableSizeList tables={status.tableSizes} />
+        </DetailRow>
+
+        <DetailRow
+          label="Version de l'application" detailKey="version" openKey={openKey} setOpenKey={setOpenKey}
+          value={status.version}
+        >
+          <p className="admin-empty" style={{ padding: '10px 20px' }}>Numéro de version défini dans le fichier package.json du backend.</p>
+        </DetailRow>
+
+        <DetailRow
+          label="Dernier déploiement" detailKey="deploy" openKey={openKey} setOpenKey={setOpenKey}
+          value={status.deployCommit ? status.deployCommit.slice(0, 7) : 'Non communiqué par l’hébergeur'}
+        >
+          {status.deployCommit ? (
+            <p className="admin-empty" style={{ padding: '10px 20px' }}>
+              <a href={`https://github.com/Crescence29/cortex-benin-tv/commit/${status.deployCommit}`} target="_blank" rel="noopener noreferrer">
+                Voir ce commit sur GitHub →
+              </a>
+            </p>
+          ) : (
+            <p className="admin-empty" style={{ padding: '10px 20px' }}>L'hébergeur actuel ne fournit pas cette information.</p>
+          )}
+        </DetailRow>
+
+        <DetailRow
+          label="Dernière sauvegarde" detailKey="backup" openKey={openKey} setOpenKey={setOpenKey}
+          value={status.lastBackupAt ? new Date(status.lastBackupAt).toLocaleString() : 'Aucune sauvegarde effectuée pour le moment'}
+        >
+          <p className="admin-empty" style={{ padding: '10px 20px' }}>
+            Une seule sauvegarde est conservée à la fois. Utilisez « Sauvegarder maintenant » ci-dessus pour en refaire une.
+          </p>
+        </DetailRow>
+      </div>
     </div>
   );
 }

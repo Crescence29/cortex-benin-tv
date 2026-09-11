@@ -8,16 +8,28 @@ const state = {
   errorCount: 0,
   responseTimes: [], // derniers temps de réponse en ms (buffer glissant)
   recentErrors: [], // { message, path, status, at }
+  routeCounts: new Map(), // "MÉTHODE /chemin" -> nombre d'appels
 };
 
 const MAX_RESPONSE_SAMPLES = 200;
 const MAX_ERROR_SAMPLES = 20;
 
-export function trackRequest(durationMs, statusCode) {
+function routeKey(method, path) {
+  // Regroupe les routes à paramètre (ex: /articles/mon-article) pour éviter
+  // une entrée par valeur distincte — on garde les deux premiers segments.
+  const segments = path.split('?')[0].split('/').filter(Boolean).slice(0, 2);
+  return `${method} /${segments.join('/')}`;
+}
+
+export function trackRequest(durationMs, statusCode, method, path) {
   state.requestCount += 1;
   state.responseTimes.push(durationMs);
   if (state.responseTimes.length > MAX_RESPONSE_SAMPLES) state.responseTimes.shift();
   if (statusCode >= 500) state.errorCount += 1;
+  if (method && path) {
+    const key = routeKey(method, path);
+    state.routeCounts.set(key, (state.routeCounts.get(key) || 0) + 1);
+  }
 }
 
 export function trackError(err, req) {
@@ -36,11 +48,17 @@ export function getMetrics() {
     state.responseTimes.length > 0
       ? Math.round(state.responseTimes.reduce((a, b) => a + b, 0) / state.responseTimes.length)
       : null;
+  const topRoutes = [...state.routeCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([route, count]) => ({ route, count }));
   return {
     uptimeSeconds: Math.round((Date.now() - state.bootAt) / 1000),
     requestCount: state.requestCount,
     avgResponseTimeMs: avg,
+    responseTimeSamples: state.responseTimes.slice(-30),
     errorCount: state.errorCount,
     recentErrors: state.recentErrors,
+    topRoutes,
   };
 }

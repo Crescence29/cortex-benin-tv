@@ -61,7 +61,9 @@ app.use(express.json({ limit: '2mb' }));
 
 app.use((req, res, next) => {
   const start = Date.now();
-  res.on('finish', () => trackRequest(Date.now() - start, res.statusCode));
+  const { method, path } = req; // capturés tout de suite : les routeurs imbriqués
+  // réécrivent temporairement req.url pendant le traitement de la requête.
+  res.on('finish', () => trackRequest(Date.now() - start, res.statusCode, method, path));
   next();
 });
 

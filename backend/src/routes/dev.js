@@ -47,10 +47,23 @@ router.get('/system-status', requireAuth, requireSuperAdmin, async (_req, res) =
     `SELECT COUNT(*) AS last24h, MAX(created_at) AS lastLoginAt
      FROM activity_logs WHERE action = 'login_success' AND created_at >= NOW() - INTERVAL 24 HOUR`
   );
+  const [recentLogins] = await pool.query(
+    `SELECT actor_name, actor_role, ip_address, created_at
+     FROM activity_logs WHERE action = 'login_success'
+     ORDER BY created_at DESC LIMIT 10`
+  );
+  const [tableSizes] = await pool.query(
+    `SELECT table_name AS \`table\`, table_rows AS \`rows\`,
+            (data_length + index_length) AS sizeBytes
+     FROM information_schema.tables
+     WHERE table_schema = DATABASE()
+     ORDER BY sizeBytes DESC LIMIT 10`
+  );
 
   const metrics = getMetrics();
   const totalMem = os.totalmem();
   const freeMem = os.freemem();
+  const proc = process.memoryUsage();
 
   res.json({
     api: 'ok',
@@ -59,17 +72,24 @@ router.get('/system-status', requireAuth, requireSuperAdmin, async (_req, res) =
     uptimeSeconds: metrics.uptimeSeconds,
     requestCount: metrics.requestCount,
     avgResponseTimeMs: metrics.avgResponseTimeMs,
+    responseTimeSamples: metrics.responseTimeSamples,
+    topRoutes: metrics.topRoutes,
     errorCount: metrics.errorCount,
     recentErrors: metrics.recentErrors,
     loginsLast24h: loginStats.last24h,
     lastLoginAt: loginStats.lastLoginAt,
+    recentLogins,
     version: process.env.npm_package_version || '1.0.0',
     deployCommit: process.env.RENDER_GIT_COMMIT || null,
     lastBackupAt: lastBackup?.value || null,
     memory: { totalBytes: totalMem, freeBytes: freeMem, usedBytes: totalMem - freeMem },
+    processMemory: { rss: proc.rss, heapUsed: proc.heapUsed, heapTotal: proc.heapTotal },
     cpuLoad1m: os.loadavg()[0],
+    cpuLoad5m: os.loadavg()[1],
+    cpuLoad15m: os.loadavg()[2],
     cpuCount: os.cpus().length,
     disk: diskUsage(),
+    tableSizes,
     checkedAt: new Date().toISOString(),
   });
 });
