@@ -6,6 +6,8 @@ import { requireAuth } from '../middleware/auth.js';
 import { requireDeveloper } from '../middleware/requireDeveloper.js';
 import { logActivity, clientIp } from '../lib/logActivity.js';
 import { getMetrics } from '../lib/systemMetrics.js';
+import { getRoutes } from '../lib/apiRegistry.js';
+import { RATE_LIMITS } from '../middleware/rateLimit.js';
 
 const router = Router();
 
@@ -91,6 +93,73 @@ router.get('/system-status', requireAuth, requireDeveloper, async (_req, res) =>
     disk: diskUsage(),
     tableSizes,
     checkedAt: new Date().toISOString(),
+  });
+});
+
+// Vue d'ensemble de l'API pour le développeur : liste réelle des endpoints
+// enregistrés (issue des routeurs Express eux-mêmes), leurs statistiques
+// d'usage/erreurs, les limites de requêtes réellement appliquées, et l'état
+// des services externes dont dépend le site. Il n'y a ni clés API, ni
+// tokens, ni webhooks à gérer : l'API est strictement interne, consommée
+// uniquement par le frontend de Cortex Bénin TV — donc honnêtement absents
+// plutôt qu'inventés.
+router.get('/api-overview', requireAuth, requireDeveloper, async (_req, res) => {
+  const routes = getRoutes();
+  const grouped = {};
+  for (const r of routes) {
+    const group = '/' + r.path.split('/').filter(Boolean).slice(0, 2).join('/');
+    (grouped[group] ||= []).push(r);
+  }
+
+  const metrics = getMetrics();
+
+  const dbStart = Date.now();
+  let dbCheck;
+  try {
+    await pool.query('SELECT 1');
+    dbCheck = { status: 'ok', latencyMs: Date.now() - dbStart };
+  } catch {
+    dbCheck = { status: 'error', latencyMs: Date.now() - dbStart };
+  }
+
+  const [feedSources] = await pool.query(
+    'SELECT name, url, active, last_fetched_at FROM feed_sources ORDER BY name'
+  );
+
+  res.json({
+    version: process.env.npm_package_version || '1.0.0',
+    endpointGroups: Object.entries(grouped)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([group, items]) => ({ group, routes: items })),
+    endpointStats: metrics.endpointStats,
+    rateLimits: RATE_LIMITS.map((r) => ({
+      label: r.label,
+      routes: r.routes,
+      limit: r.limit,
+      windowMinutes: Math.round(r.windowMs / 60000),
+    })),
+    externalServices: [
+      {
+        name: 'Base de données MySQL (Aiven)',
+        status: dbCheck.status,
+        detail: `${dbCheck.latencyMs} ms`,
+      },
+      {
+        name: 'Hébergement backend (Render)',
+        status: 'ok',
+        detail: process.env.RENDER_GIT_COMMIT ? `commit ${process.env.RENDER_GIT_COMMIT.slice(0, 7)}` : 'environnement local',
+      },
+      ...feedSources.map((f) => ({
+        name: `Flux RSS — ${f.name}`,
+        status: f.active ? (f.last_fetched_at ? 'ok' : 'pending') : 'disabled',
+        detail: f.last_fetched_at
+          ? `dernière récupération : ${new Date(f.last_fetched_at).toLocaleString('fr-FR')}`
+          : f.active
+            ? 'jamais récupéré'
+            : 'désactivé',
+      })),
+    ],
+    note: "Cette API est interne : elle n'est consommée que par le site Cortex Bénin TV lui-même. Il n'existe donc pas de clés API, de tokens d'accès tiers ni de webhooks sortants à gérer.",
   });
 });
 

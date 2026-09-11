@@ -309,6 +309,163 @@ function SystemStatusPanel() {
   );
 }
 
+function EndpointGroupList({ groups }) {
+  if (!groups || groups.length === 0) return <p className="admin-empty">Aucun endpoint enregistré.</p>;
+  return (
+    <div className="api-endpoint-groups">
+      {groups.map((g) => (
+        <div key={g.group} className="api-endpoint-group">
+          <div className="api-endpoint-group__title">{g.group}</div>
+          <ul className="detail-list">
+            {g.routes.map((r, i) => (
+              <li key={i}>
+                <code><span className={`api-method api-method--${r.method.toLowerCase()}`}>{r.method}</span> {r.path}</code>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EndpointStatsTable({ stats }) {
+  if (!stats || stats.length === 0) return <p className="admin-empty">Aucune requête enregistrée depuis le dernier redémarrage.</p>;
+  return (
+    <table className="data-table data-table--compact">
+      <thead>
+        <tr><th>Endpoint</th><th>Requêtes</th><th>Erreurs</th></tr>
+      </thead>
+      <tbody>
+        {stats.map((s) => (
+          <tr key={s.route}>
+            <td><code>{s.route}</code></td>
+            <td>{s.count.toLocaleString()}</td>
+            <td>{s.errors > 0 ? <span style={{ color: '#d1274a', fontWeight: 700 }}>{s.errors}</span> : 0}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function RateLimitsList({ limits }) {
+  if (!limits || limits.length === 0) return <p className="admin-empty">Aucune limite configurée.</p>;
+  return (
+    <ul className="detail-list">
+      {limits.map((l) => (
+        <li key={l.label}>
+          <span>{l.label} — {l.routes.join(', ')}</span>
+          <span>{l.limit} requêtes / {l.windowMinutes} min</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ExternalServicesList({ services }) {
+  if (!services || services.length === 0) return <p className="admin-empty">Aucun service externe suivi.</p>;
+  return (
+    <ul className="detail-list">
+      {services.map((s, i) => (
+        <li key={i}>
+          <span><StatusDot ok={s.status === 'ok'} /> {s.name}</span>
+          <span>{s.detail}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ApiOverviewPanel() {
+  const [overview, setOverview] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [openKey, setOpenKey] = useState(null);
+
+  function load() {
+    api.getApiOverview().then(setOverview).finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    load();
+    const interval = setInterval(load, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  if (loading && !overview) {
+    return (
+      <div className="admin-panel">
+        <div className="admin-panel__header"><h2>Gestion de l'API</h2></div>
+        <div className="admin-empty">Chargement…</div>
+      </div>
+    );
+  }
+  if (!overview) return null;
+
+  const totalEndpoints = overview.endpointGroups.reduce((sum, g) => sum + g.routes.length, 0);
+  const totalRequests = overview.endpointStats.reduce((sum, s) => sum + s.count, 0);
+  const totalErrors = overview.endpointStats.reduce((sum, s) => sum + s.errors, 0);
+  const allOk = overview.externalServices.every((s) => s.status === 'ok' || s.status === 'disabled');
+
+  return (
+    <div className="admin-panel">
+      <div className="admin-panel__header">
+        <h2>Gestion de l'API</h2>
+        <button type="button" className="btn btn--sm btn--outline" onClick={load}>
+          <IconRefresh /> Actualiser
+        </button>
+      </div>
+
+      <div className="system-status-grid">
+        <DetailRow
+          label="Version de l'API" detailKey="api-version" openKey={openKey} setOpenKey={setOpenKey}
+          value={`v${overview.version}`}
+        >
+          <p className="admin-empty" style={{ padding: '10px 20px' }}>
+            Une seule version publiée pour le moment — pas de schéma de versionnage (/v1, /v2) en place.
+          </p>
+        </DetailRow>
+
+        <DetailRow
+          label="Endpoints enregistrés" detailKey="api-endpoints" openKey={openKey} setOpenKey={setOpenKey}
+          value={`${totalEndpoints} routes`}
+        >
+          <EndpointGroupList groups={overview.endpointGroups} />
+        </DetailRow>
+
+        <DetailRow
+          label="Requêtes & erreurs par endpoint" detailKey="api-stats" openKey={openKey} setOpenKey={setOpenKey}
+          value={`${totalRequests.toLocaleString()} requêtes · ${totalErrors} erreur${totalErrors > 1 ? 's' : ''} (depuis le dernier redémarrage)`}
+        >
+          <EndpointStatsTable stats={overview.endpointStats} />
+        </DetailRow>
+
+        <DetailRow
+          label="Limites de requêtes" detailKey="api-limits" openKey={openKey} setOpenKey={setOpenKey}
+          value={`${overview.rateLimits.length} règle${overview.rateLimits.length > 1 ? 's' : ''} active${overview.rateLimits.length > 1 ? 's' : ''}`}
+        >
+          <RateLimitsList limits={overview.rateLimits} />
+        </DetailRow>
+
+        <DetailRow
+          label="Services externes" detailKey="api-services" openKey={openKey} setOpenKey={setOpenKey}
+          statusOk={allOk}
+          value={`${overview.externalServices.length} service${overview.externalServices.length > 1 ? 's' : ''} suivi${overview.externalServices.length > 1 ? 's' : ''}`}
+        >
+          <ExternalServicesList services={overview.externalServices} />
+        </DetailRow>
+
+        <DetailRow
+          label="Clés API / Tokens / Webhooks" detailKey="api-external-access" openKey={openKey} setOpenKey={setOpenKey}
+          value="Non applicable"
+        >
+          <p className="admin-empty" style={{ padding: '10px 20px' }}>{overview.note}</p>
+        </DetailRow>
+      </div>
+    </div>
+  );
+}
+
 const SENSITIVE_ACTIONS = new Set(['login_failed', 'role_changed', 'user_deleted', 'password_reset']);
 
 const ACTION_META = {
@@ -574,6 +731,7 @@ export default function DeveloperTab() {
       </div>
 
       <SystemStatusPanel />
+      <ApiOverviewPanel />
       <AdminAccessPanel />
       <ActivityLog />
       <IdentityPanel />

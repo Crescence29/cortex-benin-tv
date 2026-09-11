@@ -9,6 +9,7 @@ const state = {
   responseTimes: [], // derniers temps de réponse en ms (buffer glissant)
   recentErrors: [], // { message, path, status, at }
   routeCounts: new Map(), // "MÉTHODE /chemin" -> nombre d'appels
+  routeErrorCounts: new Map(), // "MÉTHODE /chemin" -> nombre de réponses en erreur (>=400)
 };
 
 const MAX_RESPONSE_SAMPLES = 200;
@@ -29,6 +30,9 @@ export function trackRequest(durationMs, statusCode, method, path) {
   if (method && path) {
     const key = routeKey(method, path);
     state.routeCounts.set(key, (state.routeCounts.get(key) || 0) + 1);
+    if (statusCode >= 400) {
+      state.routeErrorCounts.set(key, (state.routeErrorCounts.get(key) || 0) + 1);
+    }
   }
 }
 
@@ -52,6 +56,9 @@ export function getMetrics() {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 8)
     .map(([route, count]) => ({ route, count }));
+  const endpointStats = [...state.routeCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([route, count]) => ({ route, count, errors: state.routeErrorCounts.get(route) || 0 }));
   return {
     uptimeSeconds: Math.round((Date.now() - state.bootAt) / 1000),
     requestCount: state.requestCount,
@@ -60,5 +67,6 @@ export function getMetrics() {
     errorCount: state.errorCount,
     recentErrors: state.recentErrors,
     topRoutes,
+    endpointStats,
   };
 }

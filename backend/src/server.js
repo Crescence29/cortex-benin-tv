@@ -32,6 +32,7 @@ import { createDraftsFromNewFeedItems } from './feeds/draftFromFeeds.js';
 import { pool } from './db/pool.js';
 import { loginLimiter } from './middleware/rateLimit.js';
 import { trackRequest, trackError } from './lib/systemMetrics.js';
+import { registerRoutes } from './lib/apiRegistry.js';
 
 const app = express();
 
@@ -101,6 +102,27 @@ app.use('/api/announcements', announcementsRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/admin', devRouter);
 app.use('/api/contact', contactRouter);
+
+registerRoutes('/api/auth', authRouter);
+registerRoutes('/api/categories', categoriesRouter);
+registerRoutes('/api/articles', articlesRouter);
+registerRoutes('/api/videos', videosRouter);
+registerRoutes('/api/feeds', feedsRouter);
+registerRoutes('/api/cron', cronRouter);
+registerRoutes('/api/languages', languagesRouter);
+registerRoutes('/api/users', usersRouter);
+registerRoutes('/api/live', liveRouter);
+registerRoutes('/api/tv', tvRouter);
+registerRoutes('/api/analytics', analyticsRouter);
+registerRoutes('/api/media', mediaRouter);
+registerRoutes('/api/tags', tagsRouter);
+registerRoutes('/api/newsletter', newsletterRouter);
+registerRoutes('/api/partners', partnersRouter);
+registerRoutes('/api/shows', showsRouter);
+registerRoutes('/api/announcements', announcementsRouter);
+registerRoutes('/api/settings', settingsRouter);
+registerRoutes('/api/admin', devRouter);
+registerRoutes('/api/contact', contactRouter);
 
 app.use((err, req, res, _next) => {
   console.error(err);

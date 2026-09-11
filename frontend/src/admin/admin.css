@@ -805,6 +805,36 @@
   width: 100%;
 }
 
+.api-endpoint-groups {
+  padding: 10px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.api-endpoint-group__title {
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.api-method {
+  display: inline-block;
+  min-width: 46px;
+  text-align: center;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  margin-right: 6px;
+}
+
+.api-method--get { background: color-mix(in srgb, #1a7f37 20%, transparent); color: #1a7f37; }
+.api-method--post { background: color-mix(in srgb, #0969da 20%, transparent); color: #0969da; }
+.api-method--put { background: color-mix(in srgb, #9a6700 20%, transparent); color: #9a6700; }
+.api-method--delete { background: color-mix(in srgb, #d1274a 20%, transparent); color: #d1274a; }
+
 .lang-pills {
   display: flex;
   flex-wrap: wrap;
