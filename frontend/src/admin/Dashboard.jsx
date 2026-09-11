@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from './AuthContext';
 import AdminLayout from './AdminLayout';
+import { roleLabel, ROLE_RANK } from './roles';
 import {
   IconDoc,
   IconVideo,
@@ -146,8 +147,9 @@ export default function Dashboard() {
   const unreadMessages = messages.filter((m) => !m.is_read).length;
   const publishedCount = articles.filter((a) => a.status === 'published').length;
   const pendingReviewCount = articles.filter((a) => a.status === 'pending_review').length;
-  const editorCount = users.filter((u) => u.role === 'editor').length;
-  const adminCount = users.filter((u) => u.role === 'admin').length;
+  const managerCount = users.filter((u) => u.role === 'manager').length;
+  const userCount = users.filter((u) => u.role === 'user').length;
+  const adminCount = users.filter((u) => u.role === 'admin' || u.role === 'super_admin').length;
   const totalViews = analytics ? analytics.articles.views + analytics.videos.views : null;
 
   const recentActivity = [
@@ -157,7 +159,7 @@ export default function Dashboard() {
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
     .slice(0, 6);
 
-  const roleLabel = user?.is_super_admin ? 'Développeur' : user?.role === 'admin' ? 'Administrateur' : 'Journaliste';
+  const currentRoleLabel = user?.is_developer ? 'Développeur' : roleLabel(user?.role);
   const today = new Date().toLocaleDateString(undefined, {
     weekday: 'long',
     year: 'numeric',
@@ -168,7 +170,7 @@ export default function Dashboard() {
   return (
     <AdminLayout>
       <div className="admin-greeting">
-        <h1>BONJOUR, {roleLabel.toUpperCase()}</h1>
+        <h1>BONJOUR, {currentRoleLabel.toUpperCase()}</h1>
         <div className="admin-greeting__date">{today}</div>
       </div>
 
@@ -176,7 +178,9 @@ export default function Dashboard() {
         <StatCard icon={IconDoc} value={articles.length} label="Articles" />
         <StatCard icon={IconVideo} value={videos.length} label="Vidéos" />
         <StatCard icon={IconEye} value={totalViews ?? publishedCount} label={totalViews !== null ? 'Vues totales' : 'Publiés'} />
-        {user?.role === 'admin' && <StatCard icon={IconUsers} value={users.length} label="Comptes admin" />}
+        {(ROLE_RANK[user?.role] || 0) >= ROLE_RANK.admin && (
+          <StatCard icon={IconUsers} value={users.length} label="Comptes admin" />
+        )}
         <StatCard icon={IconMail} value={newsletterCount} label="Abonnés newsletter" to="/admin/newsletter" />
         <StatCard icon={IconMail} value={unreadMessages} label="Messages non lus" to="/admin/messages" />
         <StatCard icon={IconAlertTriangle} value={pendingReviewCount} label="Articles à valider" to="/admin/articles?status=pending_review" />
@@ -189,8 +193,12 @@ export default function Dashboard() {
           </div>
           <div className="role-breakdown">
             <div className="role-row">
-              <span>Journalistes</span>
-              <strong>{editorCount}</strong>
+              <span>Managers</span>
+              <strong>{managerCount}</strong>
+            </div>
+            <div className="role-row">
+              <span>Utilisateurs</span>
+              <strong>{userCount}</strong>
             </div>
             <div className="role-row">
               <span>Administrateurs</span>

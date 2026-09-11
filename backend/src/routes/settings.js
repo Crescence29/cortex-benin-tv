@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { pool } from '../db/pool.js';
 import { requireAuth } from '../middleware/auth.js';
-import { requireSuperAdmin } from '../middleware/requireSuperAdmin.js';
+import { requireDeveloper } from '../middleware/requireDeveloper.js';
 import { logActivity, clientIp } from '../lib/logActivity.js';
 
 const router = Router();
@@ -12,7 +12,7 @@ router.get('/', async (_req, res) => {
   res.json(row?.data || { logo_mode: 'image', logo_text: 'CORTEX BÉNIN TV' });
 });
 
-router.put('/', requireAuth, requireSuperAdmin, async (req, res) => {
+router.put('/', requireAuth, requireDeveloper, async (req, res) => {
   const { logo_mode, logo_text } = req.body;
   if (logo_mode && !['image', 'text'].includes(logo_mode)) {
     return res.status(400).json({ error: 'logo_mode doit être "image" ou "text"' });

@@ -729,6 +729,50 @@
   color: var(--text-muted);
 }
 
+.badge--ok {
+  background: color-mix(in srgb, #1a7f37 15%, transparent);
+  color: #1a7f37;
+}
+
+.badge--muted {
+  background: color-mix(in srgb, #c0392b 15%, transparent);
+  color: #c0392b;
+}
+
+.data-table__row--muted {
+  opacity: 0.55;
+}
+
+.data-table--compact th,
+.data-table--compact td {
+  padding: 6px 10px;
+  font-size: 0.85rem;
+}
+
+.sessions-panel {
+  padding: 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sessions-panel__ua {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dev-flag-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 10px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
 .lang-pills {
   display: flex;
   flex-wrap: wrap;

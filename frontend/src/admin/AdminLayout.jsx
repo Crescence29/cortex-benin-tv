@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import ThemeToggle from '../components/ThemeToggle';
+import { roleLabel } from './roles';
 import {
   IconGrid,
   IconDoc,
@@ -98,7 +99,7 @@ export default function AdminLayout({ children }) {
             <IconBell />
           </button>
           <ThemeToggle />
-          {user?.is_super_admin && (
+          {user?.is_developer && (
             <Link to="/admin/developpeur" className="admin-dev-btn">
               <IconCode /> Développeur
             </Link>
@@ -106,7 +107,7 @@ export default function AdminLayout({ children }) {
           <div className="admin-user-menu" ref={menuRef}>
             <button className="admin-user-menu__trigger" onClick={() => setMenuOpen((v) => !v)} type="button">
               <span className="admin-sidebar__avatar admin-sidebar__avatar--sm">{user?.name?.[0] || '?'}</span>
-              {user?.role === 'admin' ? 'Administrateur' : 'Journaliste'}
+              {roleLabel(user?.role)}
               <IconChevronDown className="admin-user-menu__chevron" />
             </button>
             {menuOpen && (

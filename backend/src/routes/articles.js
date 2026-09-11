@@ -3,6 +3,7 @@ import slugify from 'slugify';
 import { pool } from '../db/pool.js';
 import { requireAuth } from '../middleware/auth.js';
 import { sanitizeArticleHtml } from '../lib/sanitize.js';
+import { canPublishDirectly } from '../lib/roles.js';
 
 const router = Router();
 
@@ -205,12 +206,16 @@ router.post('/', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'Catégorie, langue, titre et contenu requis' });
   }
 
+  // Un compte de rang "user" ne peut pas publier directement : sa demande de
+  // publication est silencieusement ramenée à une soumission pour validation.
+  const effectiveStatus = status === 'published' && !canPublishDirectly(req.user.role) ? 'pending_review' : status;
+
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
     let published_at = null;
-    if (status === 'published') published_at = new Date();
-    if (status === 'scheduled') published_at = scheduled_at ? new Date(scheduled_at) : null;
+    if (effectiveStatus === 'published') published_at = new Date();
+    if (effectiveStatus === 'scheduled') published_at = scheduled_at ? new Date(scheduled_at) : null;
 
     const [result] = await conn.query(
       `INSERT INTO articles (cover_image, video_url, category_id, author_id, status, is_featured, published_at)
@@ -220,7 +225,7 @@ router.post('/', requireAuth, async (req, res) => {
         video_url || null,
         category_id,
         author_id || req.user.id,
-        status || 'draft',
+        effectiveStatus || 'draft',
         !!is_featured,
         published_at,
       ]
@@ -250,9 +255,11 @@ router.put('/:id', requireAuth, async (req, res) => {
   const [[existing]] = await pool.query('SELECT * FROM articles WHERE id = ?', [req.params.id]);
   if (!existing) return res.status(404).json({ error: 'Article introuvable' });
 
+  const effectiveStatus = status === 'published' && !canPublishDirectly(req.user.role) ? 'pending_review' : status;
+
   let published_at = existing.published_at;
-  if (status === 'published' && existing.status !== 'published') published_at = new Date();
-  if (status === 'scheduled') published_at = scheduled_at ? new Date(scheduled_at) : existing.published_at;
+  if (effectiveStatus === 'published' && existing.status !== 'published') published_at = new Date();
+  if (effectiveStatus === 'scheduled') published_at = scheduled_at ? new Date(scheduled_at) : existing.published_at;
 
   const conn = await pool.getConnection();
   try {
@@ -263,7 +270,7 @@ router.put('/:id', requireAuth, async (req, res) => {
         cover_image ?? existing.cover_image,
         video_url ?? existing.video_url,
         category_id ?? existing.category_id,
-        status ?? existing.status,
+        effectiveStatus ?? existing.status,
         is_featured ?? existing.is_featured,
         author_id ?? existing.author_id,
         published_at,

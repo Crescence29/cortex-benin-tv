@@ -3,14 +3,14 @@ import os from 'node:os';
 import fs from 'node:fs';
 import { pool } from '../db/pool.js';
 import { requireAuth } from '../middleware/auth.js';
-import { requireSuperAdmin } from '../middleware/requireSuperAdmin.js';
+import { requireDeveloper } from '../middleware/requireDeveloper.js';
 import { logActivity, clientIp } from '../lib/logActivity.js';
 import { getMetrics } from '../lib/systemMetrics.js';
 
 const router = Router();
 
 // Historique complet conservé en base ; on ne renvoie que les 500 entrées les plus récentes.
-router.get('/activity-logs', requireAuth, requireSuperAdmin, async (_req, res) => {
+router.get('/activity-logs', requireAuth, requireDeveloper, async (_req, res) => {
   const [rows] = await pool.query('SELECT * FROM activity_logs ORDER BY created_at DESC LIMIT 500');
   res.json(rows);
 });
@@ -31,7 +31,7 @@ function diskUsage() {
 // Vue d'ensemble technique réelle du service, pour le tableau de bord développeur.
 // Chaque valeur est mesurée en direct — rien n'est simulé ; ce qui ne peut pas
 // être mesuré honnêtement (ex: aucune sauvegarde encore faite) reste à null.
-router.get('/system-status', requireAuth, requireSuperAdmin, async (_req, res) => {
+router.get('/system-status', requireAuth, requireDeveloper, async (_req, res) => {
   const dbStart = Date.now();
   let db = 'error';
   try {
@@ -97,7 +97,7 @@ router.get('/system-status', requireAuth, requireSuperAdmin, async (_req, res) =
 // Sauvegarde manuelle : exporte le contenu réel de chaque table en JSON et
 // l'envoie en téléchargement, tout en enregistrant la date pour l'afficher
 // ensuite comme "Dernière sauvegarde" sur le dashboard.
-router.post('/backup', requireAuth, requireSuperAdmin, async (req, res) => {
+router.post('/backup', requireAuth, requireDeveloper, async (req, res) => {
   const [tables] = await pool.query('SHOW TABLES');
   const tableNames = tables.map((t) => Object.values(t)[0]);
 

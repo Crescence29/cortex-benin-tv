@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'node:crypto';
 import { pool } from '../db/pool.js';
 import { requireAuth } from '../middleware/auth.js';
 import { logActivity, clientIp } from '../lib/logActivity.js';
@@ -22,14 +23,25 @@ router.post('/login', async (req, res) => {
     return res.status(401).json({ error: 'Identifiants invalides' });
   }
 
+  if (!user.is_active) {
+    await logActivity({ actorId: user.id, actorName: user.name, actorRole: user.role, action: 'login_failed', details: 'Compte désactivé', ip });
+    return res.status(403).json({ error: 'Ce compte a été désactivé' });
+  }
+
   const valid = await bcrypt.compare(password, user.password_hash);
   if (!valid) {
     await logActivity({ actorId: user.id, actorName: user.name, actorRole: user.role, action: 'login_failed', details: 'Mot de passe incorrect', ip });
     return res.status(401).json({ error: 'Identifiants invalides' });
   }
 
+  const tokenId = crypto.randomBytes(24).toString('hex');
+  await pool.query(
+    'INSERT INTO sessions (user_id, token_id, ip_address, user_agent) VALUES (?, ?, ?, ?)',
+    [user.id, tokenId, ip, (req.headers['user-agent'] || '').slice(0, 255)]
+  );
+
   const token = jwt.sign(
-    { id: user.id, name: user.name, role: user.role, is_super_admin: !!user.is_super_admin },
+    { id: user.id, name: user.name, role: user.role, is_developer: !!user.is_developer, jti: tokenId },
     process.env.JWT_SECRET,
     { expiresIn: '8h' }
   );
@@ -38,7 +50,7 @@ router.post('/login', async (req, res) => {
 
   res.json({
     token,
-    user: { id: user.id, name: user.name, role: user.role, is_super_admin: !!user.is_super_admin },
+    user: { id: user.id, name: user.name, role: user.role, is_developer: !!user.is_developer },
   });
 });
 

@@ -42,6 +42,8 @@ export const api = {
   createUser: (data) => request('/users', { method: 'POST', body: JSON.stringify(data) }),
   updateUser: (id, data) => request(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteUser: (id) => request(`/users/${id}`, { method: 'DELETE' }),
+  getUserSessions: (id) => request(`/users/${id}/sessions`),
+  forceLogout: (id) => request(`/users/${id}/force-logout`, { method: 'POST' }),
   adminGetArticles: (params = {}) => request(`/articles/admin/all?${new URLSearchParams(params)}`),
   adminGetArticle: (id) => request(`/articles/admin/${id}`),
   createArticle: (data) => request('/articles', { method: 'POST', body: JSON.stringify(data) }),

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { api } from '../api';
 import { useAuth } from './AuthContext';
 import AdminLayout from './AdminLayout';
+import { roleLabel } from './roles';
 
 export default function Settings() {
   const { user } = useAuth();
@@ -35,7 +36,7 @@ export default function Settings() {
       <div className="admin-topbar">
         <div>
           <h1>Paramètres</h1>
-          <p className="admin-topbar__subtitle">Compte connecté : {user?.name} ({user?.role === 'admin' ? 'Administrateur' : 'Journaliste'})</p>
+          <p className="admin-topbar__subtitle">Compte connecté : {user?.name} ({user?.is_developer ? 'Développeur' : roleLabel(user?.role)})</p>
         </div>
       </div>
 

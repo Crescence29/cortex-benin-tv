@@ -3,6 +3,7 @@ import { api } from '../api';
 import { useAuth } from './AuthContext';
 import AdminLayout from './AdminLayout';
 import { setLogoState } from '../logoStore';
+import { roleLabel } from './roles';
 import {
   IconLogIn,
   IconAlertTriangle,
@@ -400,7 +401,7 @@ function AdminAccessPanel() {
             <tr key={u.id}>
               <td>{u.name}</td>
               <td>{u.email}</td>
-              <td>{u.role === 'admin' ? 'Administrateur' : 'Journaliste'}</td>
+              <td>{roleLabel(u.role)}</td>
               <td>
                 <button
                   type="button"
@@ -554,11 +555,11 @@ function IdentityPanel() {
 export default function DeveloperTab() {
   const { user } = useAuth();
 
-  if (!user?.is_super_admin) {
+  if (!user?.is_developer) {
     return (
       <AdminLayout>
         <div className="admin-topbar"><h1>Accès refusé</h1></div>
-        <div className="admin-empty">Cette section est réservée au super-administrateur.</div>
+        <div className="admin-empty">Cette section est réservée aux comptes développeur.</div>
       </AdminLayout>
     );
   }

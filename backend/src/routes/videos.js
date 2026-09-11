@@ -2,6 +2,7 @@ import { Router } from 'express';
 import slugify from 'slugify';
 import { pool } from '../db/pool.js';
 import { requireAuth } from '../middleware/auth.js';
+import { canPublishDirectly } from '../lib/roles.js';
 
 const router = Router();
 
@@ -99,14 +100,16 @@ router.post('/', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'Catégorie, URL vidéo, langue et titre requis' });
   }
 
+  const effectiveStatus = status === 'published' && !canPublishDirectly(req.user.role) ? 'pending_review' : status;
+
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
-    const published_at = status === 'published' ? new Date() : null;
+    const published_at = effectiveStatus === 'published' ? new Date() : null;
     const [result] = await conn.query(
       `INSERT INTO videos (video_url, thumbnail, category_id, program, duration_seconds, status, published_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [video_url, thumbnail || null, category_id, program || null, duration_seconds || null, status || 'draft', published_at]
+      [video_url, thumbnail || null, category_id, program || null, duration_seconds || null, effectiveStatus || 'draft', published_at]
     );
     const slug = slugify(title, { lower: true, strict: true });
     await conn.query(
@@ -129,9 +132,11 @@ router.put('/:id', requireAuth, async (req, res) => {
   const [[existing]] = await pool.query('SELECT * FROM videos WHERE id = ?', [req.params.id]);
   if (!existing) return res.status(404).json({ error: 'Vidéo introuvable' });
 
+  const effectiveStatus = status === 'published' && !canPublishDirectly(req.user.role) ? 'pending_review' : status;
+
   let published_at = existing.published_at;
-  if (status === 'published' && existing.status !== 'published') published_at = new Date();
-  if (status === 'draft') published_at = null;
+  if (effectiveStatus === 'published' && existing.status !== 'published') published_at = new Date();
+  if (effectiveStatus === 'draft') published_at = null;
 
   await pool.query(
     `UPDATE videos SET category_id=?, video_url=?, thumbnail=?, program=?, duration_seconds=?, status=?, published_at=? WHERE id=?`,
@@ -141,7 +146,7 @@ router.put('/:id', requireAuth, async (req, res) => {
       thumbnail !== undefined ? thumbnail || null : existing.thumbnail,
       program !== undefined ? program || null : existing.program,
       duration_seconds !== undefined ? duration_seconds || null : existing.duration_seconds,
-      status ?? existing.status,
+      effectiveStatus ?? existing.status,
       published_at,
       req.params.id,
     ]
