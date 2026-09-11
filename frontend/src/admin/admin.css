@@ -502,7 +502,8 @@
   border: 1px solid var(--border);
   border-radius: 10px;
   margin-bottom: 24px;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .admin-panel__header {
@@ -658,6 +659,7 @@
 /* Data table */
 .data-table {
   width: 100%;
+  min-width: 640px;
   border-collapse: collapse;
 }
 
