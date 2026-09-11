@@ -1176,3 +1176,53 @@
   letter-spacing: 0.5px;
   user-select: all;
 }
+
+.system-status-grid {
+  display: grid;
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 0 20px 16px;
+}
+
+.system-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 14px;
+  background: var(--surface);
+  font-size: 0.85rem;
+}
+
+.system-status-row > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.system-status-row > span:last-child {
+  font-weight: 700;
+  color: var(--text);
+  text-align: right;
+}
+
+.status-dot-inline {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #d1274a;
+}
+
+.status-dot-inline.is-ok {
+  background: #1a9f4a;
+}
+
+.status-dot-inline.is-down {
+  background: #d1274a;
+}

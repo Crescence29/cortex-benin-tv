@@ -31,6 +31,7 @@ import { fetchAllFeeds } from './feeds/fetchFeeds.js';
 import { createDraftsFromNewFeedItems } from './feeds/draftFromFeeds.js';
 import { pool } from './db/pool.js';
 import { loginLimiter } from './middleware/rateLimit.js';
+import { trackRequest, trackError } from './lib/systemMetrics.js';
 
 const app = express();
 
@@ -57,6 +58,12 @@ app.use(
   })
 );
 app.use(express.json({ limit: '2mb' }));
+
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => trackRequest(Date.now() - start, res.statusCode));
+  next();
+});
 
 app.get('/api/health', async (_req, res) => {
   let db = 'error';
@@ -93,8 +100,9 @@ app.use('/api/settings', settingsRouter);
 app.use('/api/admin', devRouter);
 app.use('/api/contact', contactRouter);
 
-app.use((err, _req, res, _next) => {
+app.use((err, req, res, _next) => {
   console.error(err);
+  trackError(err, req);
   res.status(500).json({ error: 'Erreur serveur' });
 });
 

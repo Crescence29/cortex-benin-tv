@@ -90,6 +90,8 @@ export const api = {
   getSettings: () => request('/settings'),
   updateSettings: (data) => request('/settings', { method: 'PUT', body: JSON.stringify(data) }),
   getActivityLogs: () => request('/admin/activity-logs'),
+  getSystemStatus: () => request('/admin/system-status'),
+  triggerBackup: () => request('/admin/backup', { method: 'POST' }),
   changePassword: (currentPassword, newPassword) =>
     request('/auth/password', { method: 'PUT', body: JSON.stringify({ currentPassword, newPassword }) }),
   submitContactMessage: (data) => request('/contact', { method: 'POST', body: JSON.stringify(data) }),

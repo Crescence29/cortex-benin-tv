@@ -16,6 +16,177 @@ import {
   IconLink,
 } from '../components/Icons';
 
+function formatBytes(bytes) {
+  if (bytes == null) return '—';
+  const units = ['o', 'Ko', 'Mo', 'Go', 'To'];
+  let value = bytes;
+  let i = 0;
+  while (value >= 1024 && i < units.length - 1) {
+    value /= 1024;
+    i += 1;
+  }
+  return `${value.toFixed(1)} ${units[i]}`;
+}
+
+function formatUptime(seconds) {
+  if (seconds == null) return '—';
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (d > 0) return `${d} j ${h} h`;
+  if (h > 0) return `${h} h ${m} min`;
+  return `${m} min`;
+}
+
+function usagePercent(usedBytes, totalBytes) {
+  if (!totalBytes) return null;
+  return Math.round((usedBytes / totalBytes) * 100);
+}
+
+function StatusDot({ ok }) {
+  return <span className={'status-dot-inline' + (ok ? ' is-ok' : ' is-down')} />;
+}
+
+function SystemStatusPanel() {
+  const [status, setStatus] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [backing, setBacking] = useState(false);
+  const [backupMsg, setBackupMsg] = useState(null);
+
+  function load() {
+    api.getSystemStatus().then(setStatus).finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    load();
+    const interval = setInterval(load, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  async function onBackup() {
+    setBacking(true);
+    setBackupMsg(null);
+    try {
+      const result = await api.triggerBackup();
+      const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `cortex-backup-${result.createdAt.slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setBackupMsg(`Sauvegarde téléchargée — ${result.tables} tables exportées.`);
+      load();
+    } catch (err) {
+      setBackupMsg(err.message);
+    } finally {
+      setBacking(false);
+    }
+  }
+
+  if (loading && !status) {
+    return (
+      <div className="admin-panel">
+        <div className="admin-panel__header"><h2>État technique</h2></div>
+        <div className="admin-empty">Chargement…</div>
+      </div>
+    );
+  }
+  if (!status) return null;
+
+  const memPct = usagePercent(status.memory?.usedBytes, status.memory?.totalBytes);
+  const diskPct = status.disk ? usagePercent(status.disk.usedBytes, status.disk.totalBytes) : null;
+
+  return (
+    <div className="admin-panel">
+      <div className="admin-panel__header">
+        <h2>État technique</h2>
+        <button type="button" className="btn btn--sm btn--outline" onClick={onBackup} disabled={backing}>
+          <IconRefresh /> {backing ? 'Sauvegarde…' : 'Sauvegarder maintenant'}
+        </button>
+      </div>
+      {backupMsg && <p className="admin-form__success" style={{ padding: '0 20px' }}>{backupMsg}</p>}
+
+      <div className="system-status-grid">
+        <div className="system-status-row">
+          <span><StatusDot ok={status.api === 'ok'} /> API</span>
+          <span>{status.api === 'ok' ? 'Opérationnelle' : 'Problème'}</span>
+        </div>
+        <div className="system-status-row">
+          <span><StatusDot ok={status.db === 'ok'} /> Base de données</span>
+          <span>{status.db === 'ok' ? `Opérationnelle (${status.dbLatencyMs} ms)` : 'Problème'}</span>
+        </div>
+        <div className="system-status-row">
+          <span>Temps de réponse moyen</span>
+          <span>{status.avgResponseTimeMs != null ? `${status.avgResponseTimeMs} ms` : '—'}</span>
+        </div>
+        <div className="system-status-row">
+          <span>Requêtes traitées</span>
+          <span>{status.requestCount.toLocaleString()} (depuis le dernier redémarrage)</span>
+        </div>
+        <div className="system-status-row">
+          <span>Erreurs serveur</span>
+          <span>{status.errorCount} (depuis le dernier redémarrage)</span>
+        </div>
+        <div className="system-status-row">
+          <span>Connexions (24 h)</span>
+          <span>
+            {status.loginsLast24h} {status.lastLoginAt ? `· dernière : ${new Date(status.lastLoginAt).toLocaleString()}` : ''}
+          </span>
+        </div>
+        <div className="system-status-row">
+          <span>Disponibilité du serveur</span>
+          <span>{formatUptime(status.uptimeSeconds)}</span>
+        </div>
+        <div className="system-status-row">
+          <span>CPU (charge 1 min)</span>
+          <span>{status.cpuLoad1m.toFixed(2)} sur {status.cpuCount} cœur{status.cpuCount > 1 ? 's' : ''}</span>
+        </div>
+        <div className="system-status-row">
+          <span>Mémoire (RAM)</span>
+          <span>{memPct != null ? `${memPct}% utilisée` : '—'} ({formatBytes(status.memory?.usedBytes)} / {formatBytes(status.memory?.totalBytes)})</span>
+        </div>
+        <div className="system-status-row">
+          <span>Espace disque</span>
+          <span>{status.disk ? `${diskPct}% utilisé (${formatBytes(status.disk.usedBytes)} / ${formatBytes(status.disk.totalBytes)})` : 'Non disponible sur cet hébergement'}</span>
+        </div>
+        <div className="system-status-row">
+          <span>Version de l'application</span>
+          <span>{status.version}</span>
+        </div>
+        <div className="system-status-row">
+          <span>Dernier déploiement</span>
+          <span>{status.deployCommit ? status.deployCommit.slice(0, 7) : 'Non communiqué par l’hébergeur'}</span>
+        </div>
+        <div className="system-status-row">
+          <span>Dernière sauvegarde</span>
+          <span>{status.lastBackupAt ? new Date(status.lastBackupAt).toLocaleString() : 'Aucune sauvegarde effectuée pour le moment'}</span>
+        </div>
+      </div>
+
+      {status.recentErrors.length > 0 && (
+        <>
+          <div className="admin-panel__header" style={{ marginTop: 20 }}>
+            <h2 style={{ fontSize: '0.95rem' }}>Erreurs récentes</h2>
+          </div>
+          <div className="activity-log">
+            {status.recentErrors.map((e, i) => (
+              <div className="activity-log__row" key={i}>
+                <span className="activity-log__icon is-sensitive"><IconAlertTriangle /></span>
+                <div className="activity-log__body">
+                  <div className="activity-log__line"><strong>{e.message}</strong></div>
+                  <div className="activity-log__meta">{e.method} {e.path}</div>
+                </div>
+                <div className="activity-log__time">{new Date(e.at).toLocaleString()}</div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 const SENSITIVE_ACTIONS = new Set(['login_failed', 'role_changed', 'user_deleted', 'password_reset']);
 
 const ACTION_META = {
@@ -28,6 +199,7 @@ const ACTION_META = {
   settings_updated: { label: 'Réglages modifiés', icon: IconSettings },
   live_started: { label: 'Direct démarré', icon: IconBroadcast },
   live_stopped: { label: 'Direct arrêté', icon: IconBroadcast },
+  manual_backup: { label: 'Sauvegarde manuelle', icon: IconRefresh },
 };
 
 function generatePassword() {
@@ -279,6 +451,7 @@ export default function DeveloperTab() {
         </div>
       </div>
 
+      <SystemStatusPanel />
       <AdminAccessPanel />
       <ActivityLog />
       <IdentityPanel />
