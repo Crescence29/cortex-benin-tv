@@ -27,6 +27,7 @@ import contactRouter from './routes/contact.js';
 import rssRouter from './routes/rss.js';
 import sitemapRouter from './routes/sitemap.js';
 import { fetchAllFeeds } from './feeds/fetchFeeds.js';
+import { createDraftsFromNewFeedItems } from './feeds/draftFromFeeds.js';
 import { pool } from './db/pool.js';
 import { loginLimiter } from './middleware/rateLimit.js';
 
@@ -103,6 +104,15 @@ app.listen(PORT, () => {
 // Rafraîchit les flux RSS agrégés toutes les 30 minutes
 cron.schedule('*/30 * * * *', () => {
   fetchAllFeeds().catch((err) => console.error('Erreur de rafraîchissement des flux:', err));
+});
+
+// Toutes les heures : transforme les nouvelles actualités détectées en
+// brouillons d'articles en attente de validation par un journaliste
+// (jamais publiés automatiquement).
+cron.schedule('0 * * * *', () => {
+  createDraftsFromNewFeedItems()
+    .then(({ created }) => created && console.log(`${created} brouillon(s) d'article créé(s) depuis la veille.`))
+    .catch((err) => console.error('Erreur de création de brouillons depuis les flux:', err));
 });
 
 // Publie automatiquement les articles programmés dont la date est passée
