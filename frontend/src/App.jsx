@@ -29,6 +29,7 @@ import FeedSources from './admin/FeedSources';
 import LiveManager from './admin/LiveManager';
 import TvSchedule from './admin/TvSchedule';
 import Journalists from './admin/Journalists';
+import RolesUsers from './admin/RolesUsers';
 import Planning from './admin/Planning';
 import Analytics from './admin/Analytics';
 import Media from './admin/Media';
@@ -59,6 +60,7 @@ export default function App() {
         <Route path="/admin/direct" element={<Protected><LiveManager /></Protected>} />
         <Route path="/admin/tv" element={<Protected><TvSchedule /></Protected>} />
         <Route path="/admin/journalistes" element={<Protected><Journalists /></Protected>} />
+        <Route path="/admin/roles-utilisateurs" element={<Protected><RolesUsers /></Protected>} />
         <Route path="/admin/planning" element={<Protected><Planning /></Protected>} />
         <Route path="/admin/analytics" element={<Protected><Analytics /></Protected>} />
         <Route path="/admin/medias" element={<Protected><Media /></Protected>} />

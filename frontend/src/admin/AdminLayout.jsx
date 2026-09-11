@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import ThemeToggle from '../components/ThemeToggle';
-import { roleLabel } from './roles';
+import { roleLabel, ROLE_RANK } from './roles';
 import {
   IconGrid,
   IconDoc,
@@ -23,6 +23,7 @@ import {
   IconLayout,
   IconCode,
   IconMail,
+  IconShield,
 } from '../components/Icons';
 import './admin.css';
 
@@ -55,6 +56,7 @@ const NAV_GROUPS = [
     items: [
       { to: '/admin/analytics', label: 'Analytics', icon: IconBarChart },
       { to: '/admin/journalistes', label: 'Journalistes', icon: IconUsers },
+      { to: '/admin/roles-utilisateurs', label: 'Rôles et utilisateurs', icon: IconShield, minRole: 'admin' },
       { to: '/admin/newsletter', label: 'Newsletter', icon: IconMail },
       { to: '/admin/flux', label: 'Réseaux', icon: IconShare },
     ],
@@ -129,7 +131,7 @@ export default function AdminLayout({ children }) {
             {NAV_GROUPS.map((group) => (
               <div className="admin-sidebar__group" key={group.label}>
                 <div className="admin-sidebar__group-label">{group.label}</div>
-                {group.items.map((item) => {
+                {group.items.filter((item) => !item.minRole || (ROLE_RANK[user?.role] || 0) >= ROLE_RANK[item.minRole]).map((item) => {
                   const Icon = item.icon;
                   const active = item.to.includes('?')
                     ? currentPath === item.to
