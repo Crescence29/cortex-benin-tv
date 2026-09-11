@@ -79,6 +79,9 @@ router.post('/:id/developer-access/start', requireAuth, async (req, res) => {
   if (!req.user.is_developer) {
     return res.status(403).json({ error: "Seul un compte développeur peut accorder ou retirer cet accès" });
   }
+  if (Number(req.params.id) === req.user.id) {
+    return res.status(400).json({ error: 'Vous ne pouvez pas modifier votre propre accès développeur' });
+  }
   const target = await getTargetUser(req.params.id);
   if (!target) return res.status(404).json({ error: 'Utilisateur introuvable' });
 

@@ -305,7 +305,7 @@ export default function RolesUsers() {
                         ROLE_LABELS[u.role] || u.role
                       )}
                       {!!u.is_developer && <span className="dev-flag-badge">Développeur</span>}
-                      {me?.is_developer && (
+                      {me?.is_developer && !isSelf && (
                         <div className="dev-access-cell">
                           <DeveloperAccessToggle user={u} onDone={load} />
                         </div>
