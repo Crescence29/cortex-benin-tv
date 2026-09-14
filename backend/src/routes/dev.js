@@ -744,6 +744,71 @@ router.post('/maintenance/reset-metrics', requireAuth, requireDeveloper, async (
   res.json({ ok: true });
 });
 
+// Vue d'ensemble sécurité. La plupart de ce bloc existe déjà ailleurs dans ce
+// tableau de bord (sessions actives, historique de connexion, IP, appareils,
+// révocation → "Rôles et utilisateurs" ; permissions granulaires → la
+// hiérarchie de rôles ; clés API/tokens → non applicable, voir "Gestion de
+// l'API") : ce panneau les résume et ajoute ce qui est réellement nouveau —
+// le statut 2FA par compte, et des alertes de sécurité calculées à partir de
+// vrais événements du journal d'activité (pas de simulation).
+router.get('/security-overview', requireAuth, requireDeveloper, async (_req, res) => {
+  const [users] = await pool.query(
+    'SELECT id, name, email, role, is_developer, two_factor_enabled FROM users ORDER BY name'
+  );
+  const [[sessionsCount]] = await pool.query('SELECT COUNT(*) AS total FROM sessions WHERE revoked_at IS NULL');
+  const [[failed24h]] = await pool.query(
+    "SELECT COUNT(*) AS total FROM activity_logs WHERE action = 'login_failed' AND created_at >= NOW() - INTERVAL 24 HOUR"
+  );
+  const [[lastLogin]] = await pool.query(
+    "SELECT actor_name, created_at FROM activity_logs WHERE action = 'login_success' ORDER BY created_at DESC LIMIT 1"
+  );
+
+  // Alerte réelle n°1 : un compte avec plusieurs échecs de connexion dans la
+  // dernière heure (signe possible de tentative de devinette de mot de passe).
+  const [bruteForceRows] = await pool.query(
+    `SELECT actor_name, COUNT(*) AS attempts, MAX(created_at) AS lastAttemptAt
+     FROM activity_logs
+     WHERE action = 'login_failed' AND created_at >= NOW() - INTERVAL 1 HOUR
+     GROUP BY actor_name HAVING COUNT(*) >= 3
+     ORDER BY attempts DESC`
+  );
+
+  // Alerte réelle n°2 : bannissements et usurpations de compte dans les
+  // dernières 24h — des actions sensibles qui méritent d'être remarquées.
+  const [sensitiveEvents] = await pool.query(
+    `SELECT action, actor_name, details, created_at FROM activity_logs
+     WHERE action IN ('user_banned', 'impersonation_started', 'developer_access_granted')
+       AND created_at >= NOW() - INTERVAL 24 HOUR
+     ORDER BY created_at DESC`
+  );
+
+  const alerts = [
+    ...bruteForceRows.map((r) => ({
+      severity: 'high',
+      message: `${r.attempts} échecs de connexion pour "${r.actor_name}" dans la dernière heure`,
+      at: r.lastAttemptAt,
+    })),
+    ...sensitiveEvents.map((e) => ({
+      severity: 'medium',
+      message: `${e.actor_name} — ${e.action}${e.details ? ` (${e.details})` : ''}`,
+      at: e.created_at,
+    })),
+  ];
+
+  res.json({
+    accounts: users.map((u) => ({
+      id: u.id, name: u.name, email: u.email, role: u.role, isDeveloper: !!u.is_developer,
+      twoFactorEnabled: !!u.two_factor_enabled,
+    })),
+    activeSessions: sessionsCount.total,
+    failedLogins24h: failed24h.total,
+    lastLogin: lastLogin ? { name: lastLogin.actor_name, at: lastLogin.created_at } : null,
+    alerts,
+    apiKeysNote: "Non applicable : cette API est strictement interne (voir \"Gestion de l'API\"), il n'existe pas de clés API ou de tokens tiers à gérer.",
+    note: "Sessions actives, historique de connexion, IP, appareils connectés et révocation sont gérés dans \"Rôles et utilisateurs\". Les permissions granulaires correspondent à la hiérarchie de rôles à 4 niveaux déjà en place.",
+  });
+});
+
 // Sauvegarde manuelle : exporte le contenu réel de chaque table en JSON et
 // l'envoie en téléchargement, tout en enregistrant la date pour l'afficher
 // ensuite comme "Dernière sauvegarde" sur le dashboard.

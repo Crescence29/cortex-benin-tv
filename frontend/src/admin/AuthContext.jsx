@@ -9,11 +9,20 @@ export function AuthProvider({ children }) {
     return raw ? JSON.parse(raw) : null;
   });
 
-  async function login(email, password) {
-    const { token, user } = await api.login(email, password);
+  function applySession({ token, user }) {
     localStorage.setItem('cortex_token', token);
     localStorage.setItem('cortex_user', JSON.stringify(user));
     setUser(user);
+  }
+
+  async function login(email, password) {
+    const res = await api.login(email, password);
+    // Compte avec la 2FA activée : pas de session tant que le code n'est
+    // pas vérifié — on renvoie tel quel pour que l'écran de connexion
+    // affiche l'étape suivante au lieu de connecter directement.
+    if (res.requiresTwoFactor) return res;
+    applySession(res);
+    return res;
   }
 
   function logout() {
@@ -25,7 +34,7 @@ export function AuthProvider({ children }) {
     setUser(null);
   }
 
-  return <AuthContext.Provider value={{ user, login, logout }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, login, logout, applySession }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

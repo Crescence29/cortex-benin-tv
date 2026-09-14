@@ -473,7 +473,7 @@ function ApiOverviewPanel() {
   );
 }
 
-const SENSITIVE_ACTIONS = new Set(['login_failed', 'role_changed', 'email_changed', 'user_deleted', 'password_reset', 'developer_access_granted', 'developer_access_revoked', 'user_banned', 'user_unbanned', 'impersonation_started', 'database_restored']);
+const SENSITIVE_ACTIONS = new Set(['login_failed', 'role_changed', 'email_changed', 'user_deleted', 'password_reset', 'developer_access_granted', 'developer_access_revoked', 'user_banned', 'user_unbanned', 'impersonation_started', 'database_restored', 'two_factor_disabled', 'backup_code_used']);
 
 const ACTION_META = {
   login_success: { label: 'Connexion réussie', icon: IconLogIn },
@@ -491,6 +491,9 @@ const ACTION_META = {
   impersonation_started: { label: 'Connexion en tant qu\'un autre compte', icon: IconUserPlus },
   database_restored: { label: 'Base de données restaurée', icon: IconDatabase },
   metrics_reset: { label: 'Compteurs de métriques réinitialisés', icon: IconSliders },
+  two_factor_enabled: { label: '2FA activée', icon: IconShield },
+  two_factor_disabled: { label: '2FA désactivée', icon: IconShield },
+  backup_code_used: { label: 'Code de secours 2FA utilisé', icon: IconShield },
   password_reset: { label: 'Mot de passe réinitialisé', icon: IconLock },
   developer_access_granted: { label: 'Accès développeur accordé', icon: IconShield },
   developer_access_revoked: { label: 'Accès développeur retiré', icon: IconShield },
@@ -1690,6 +1693,127 @@ function MaintenanceCenterPanel() {
   );
 }
 
+function SecurityAlertsList({ alerts }) {
+  if (!alerts || alerts.length === 0) return <p className="admin-empty" style={{ padding: '10px 20px' }}>Aucune alerte — rien d'inhabituel détecté.</p>;
+  return (
+    <ul className="detail-list">
+      {alerts.map((a, i) => (
+        <li key={i}>
+          <span>
+            <span className={a.severity === 'high' ? 'badge badge--danger' : 'badge badge--muted'} style={{ marginRight: 6 }}>
+              {a.severity === 'high' ? 'Élevée' : 'À noter'}
+            </span>
+            {a.message}
+          </span>
+          <span>{new Date(a.at).toLocaleString('fr-FR')}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function SecurityPanel() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [openKey, setOpenKey] = useState(null);
+
+  function load() {
+    api.getSecurityOverview().then(setData).finally(() => setLoading(false));
+  }
+
+  useEffect(load, []);
+
+  if (loading && !data) {
+    return (
+      <div className="admin-panel">
+        <div className="admin-panel__header"><h2><IconShield /> Sécurité</h2></div>
+        <div className="admin-empty">Chargement…</div>
+      </div>
+    );
+  }
+  if (!data) return null;
+
+  const twoFactorCount = data.accounts.filter((a) => a.twoFactorEnabled).length;
+
+  return (
+    <div className="admin-panel">
+      <div className="admin-panel__header">
+        <h2><IconShield /> Sécurité</h2>
+        <button type="button" className="btn btn--sm btn--outline" onClick={load}>
+          <IconRefresh /> Actualiser
+        </button>
+      </div>
+
+      <div className="system-status-grid">
+        <DetailRow
+          label="Double authentification (2FA)" detailKey="sec-2fa" openKey={openKey} setOpenKey={setOpenKey}
+          value={`${twoFactorCount} / ${data.accounts.length} comptes protégés`}
+        >
+          <ul className="detail-list">
+            {data.accounts.map((a) => (
+              <li key={a.id}>
+                <span><StatusDot ok={a.twoFactorEnabled} /> {a.name} ({a.email})</span>
+                <span>{a.twoFactorEnabled ? 'Activée' : 'Non activée'}</span>
+              </li>
+            ))}
+          </ul>
+        </DetailRow>
+
+        <DetailRow
+          label="Sessions actives" detailKey="sec-sessions" openKey={openKey} setOpenKey={setOpenKey}
+          value={`${data.activeSessions} au total`}
+        >
+          <p className="admin-empty" style={{ padding: '10px 20px' }}>
+            Détail par compte (appareils, IP, déconnexion) dans "Rôles et utilisateurs".
+          </p>
+        </DetailRow>
+
+        <DetailRow
+          label="Tentatives de connexion échouées (24h)" detailKey="sec-failed" openKey={openKey} setOpenKey={setOpenKey}
+          statusOk={data.failedLogins24h === 0}
+          value={`${data.failedLogins24h}`}
+        >
+          <p className="admin-empty" style={{ padding: '10px 20px' }}>
+            Historique complet dans "Logs et surveillance" et le Journal d'audit.
+          </p>
+        </DetailRow>
+
+        <DetailRow
+          label="Dernière connexion" detailKey="sec-last-login" openKey={openKey} setOpenKey={setOpenKey}
+          value={data.lastLogin ? `${data.lastLogin.name} — ${new Date(data.lastLogin.at).toLocaleString('fr-FR')}` : 'Aucune'}
+        >
+          <p className="admin-empty" style={{ padding: '10px 20px' }}>{data.note}</p>
+        </DetailRow>
+
+        <DetailRow
+          label="Clés API / Tokens" detailKey="sec-api-keys" openKey={openKey} setOpenKey={setOpenKey}
+          value="Non applicable"
+        >
+          <p className="admin-empty" style={{ padding: '10px 20px' }}>{data.apiKeysNote}</p>
+        </DetailRow>
+
+        <DetailRow
+          label="Alertes de sécurité" detailKey="sec-alerts" openKey={openKey} setOpenKey={setOpenKey}
+          statusOk={data.alerts.length === 0}
+          value={data.alerts.length === 0 ? 'Aucune' : `${data.alerts.length} alerte(s)`}
+        >
+          <SecurityAlertsList alerts={data.alerts} />
+        </DetailRow>
+
+        <DetailRow
+          label="Permissions granulaires" detailKey="sec-permissions" openKey={openKey} setOpenKey={setOpenKey}
+          value="Hiérarchie à 4 niveaux"
+        >
+          <p className="admin-empty" style={{ padding: '10px 20px' }}>
+            Super Admin → Administrateur → Manager → Utilisateur, avec accès développeur séparé de la
+            hiérarchie métier. Détail dans "Rôles et utilisateurs".
+          </p>
+        </DetailRow>
+      </div>
+    </div>
+  );
+}
+
 function LogsPanel() {
   const [data, setData] = useState(null);
   const [query, setQuery] = useState('');
@@ -1878,6 +2002,7 @@ export default function DeveloperTab() {
       <DeploymentPanel />
       <ConfigPanel />
       <MaintenanceCenterPanel />
+      <SecurityPanel />
       <LogsPanel />
       <AdminAccessPanel />
       <ActivityLog />

@@ -20,7 +20,7 @@ const pendingBanActions = new Map();
 
 router.get('/', requireAuth, async (req, res) => {
   const [rows] = await pool.query(
-    `SELECT u.id, u.name, u.email, u.role, u.is_developer, u.status, u.created_at,
+    `SELECT u.id, u.name, u.email, u.role, u.is_developer, u.status, u.two_factor_enabled, u.created_at,
             (SELECT MAX(s.last_seen_at) FROM sessions s WHERE s.user_id = u.id) AS last_seen_at
      FROM users u ORDER BY u.name`
   );

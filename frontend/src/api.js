@@ -39,6 +39,12 @@ export const api = {
   login: (email, password) =>
     request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   logout: () => request('/auth/logout', { method: 'POST' }),
+  verifyTwoFactorLogin: (tempToken, code) =>
+    request('/auth/2fa/verify-login', { method: 'POST', body: JSON.stringify({ tempToken, code }) }),
+  startTwoFactorSetup: () => request('/auth/2fa/setup/start', { method: 'POST' }),
+  confirmTwoFactorSetup: (code) => request('/auth/2fa/setup/confirm', { method: 'POST', body: JSON.stringify({ code }) }),
+  disableTwoFactor: (password) => request('/auth/2fa/disable', { method: 'POST', body: JSON.stringify({ password }) }),
+  getSecurityOverview: () => request('/admin/security-overview'),
   getUsers: () => request('/users'),
   createUser: (data) => request('/users', { method: 'POST', body: JSON.stringify(data) }),
   updateUser: (id, data) => request(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
