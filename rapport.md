@@ -3,7 +3,7 @@
 > Fichier vivant : mis à jour au fur et à mesure de l'avancement du projet.
 > Dernière mise à jour : **14 septembre 2026**
 
-**Nouveau dans cette mise à jour :** section "Logs et surveillance" complète (voir §2), correction du bug Analytics découvert grâce à ce nouveau panneau (voir §4).
+**Nouveau dans cette mise à jour :** hiérarchie de rôles à 4 niveaux avec statuts de compte à 3 états (actif/suspendu/banni) et connexion développeur sans mot de passe (§2), section "Logs et surveillance" complète (§2), gestion de l'API (§2), gestion de la base de données avec sauvegarde/restauration (§2).
 
 ## Sommaire
 
@@ -89,6 +89,9 @@ Déploiement actuel (démo) :
   - Erreurs de paiement : affichées honnêtement comme non applicables — aucun système de paiement n'existe sur le site
   - Barre de recherche sur les logs et sur le journal d'audit (personne, action, IP, message)
 - **Journal d'audit** ("qui a fait quoi ?") — renommage et recherche ajoutée sur le journal d'activité existant
+- **Statuts de compte à 3 états** : Actif / Suspendu (réversible en un clic) / Banni (accordé et levé uniquement via un code de confirmation à 6 chiffres, pour que ce soit délibérément plus lourd à annuler qu'une simple suspension)
+- **Connexion développeur sans mot de passe** ("Se connecter en tant que") : un développeur peut se connecter sur n'importe quel compte actif non-développeur sans en connaître le mot de passe, protégé par code de confirmation, session réelle créée et journalisée comme action sensible ; impossible sur soi-même ou sur un autre développeur
+- **Gestion de la base de données** (données 100% réelles) : état, nombre de tables, taille totale, lignes (estimation), connexions actives, requêtes lentes, erreurs de connexion SQL, liste des migrations présentes dans le dépôt, vérification d'intégrité (CHECK TABLE), sauvegarde manuelle, et **restauration depuis une sauvegarde JSON** (protégée par code de confirmation, transaction tout-ou-rien, tables `users`/`sessions` volontairement exclues pour ne jamais casser les accès existants)
 
 ---
 
