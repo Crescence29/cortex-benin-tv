@@ -3,7 +3,7 @@
 > Fichier vivant : mis à jour au fur et à mesure de l'avancement du projet.
 > Dernière mise à jour : **14 septembre 2026**
 
-**Nouveau dans cette mise à jour :** hiérarchie de rôles à 4 niveaux avec statuts de compte à 3 états (actif/suspendu/banni) et connexion développeur sans mot de passe (§2), section "Logs et surveillance" complète (§2), gestion de l'API (§2), gestion de la base de données avec sauvegarde/restauration (§2).
+**Nouveau dans cette mise à jour :** hiérarchie de rôles à 4 niveaux avec statuts de compte à 3 états (actif/suspendu/banni) et connexion développeur sans mot de passe (§2), section "Logs et surveillance" complète (§2), gestion de l'API (§2), gestion de la base de données avec sauvegarde/restauration (§2), gestion des fichiers et médias (§2 — constat important : ce site n'a aucun système d'upload, voir détail ci-dessous).
 
 ## Sommaire
 
@@ -92,6 +92,7 @@ Déploiement actuel (démo) :
 - **Statuts de compte à 3 états** : Actif / Suspendu (réversible en un clic) / Banni (accordé et levé uniquement via un code de confirmation à 6 chiffres, pour que ce soit délibérément plus lourd à annuler qu'une simple suspension)
 - **Connexion développeur sans mot de passe** ("Se connecter en tant que") : un développeur peut se connecter sur n'importe quel compte actif non-développeur sans en connaître le mot de passe, protégé par code de confirmation, session réelle créée et journalisée comme action sensible ; impossible sur soi-même ou sur un autre développeur
 - **Gestion de la base de données** (données 100% réelles) : état, nombre de tables, taille totale, lignes (estimation), connexions actives, requêtes lentes, erreurs de connexion SQL, liste des migrations présentes dans le dépôt, vérification d'intégrité (CHECK TABLE), sauvegarde manuelle, et **restauration depuis une sauvegarde JSON** (protégée par code de confirmation, transaction tout-ou-rien, tables `users`/`sessions` volontairement exclues pour ne jamais casser les accès existants)
+- **Gestion des fichiers et médias** — **constat important sur l'architecture réelle** : ce site n'a **aucun système d'upload de fichiers**. Les images/vidéos des articles sont des URL externes collées par les journalistes ; rien n'est jamais téléversé ni stocké sur le serveur. Panneau honnête construit sur ce qui existe vraiment : décompte des médias référencés par type, et **vérificateur de liens morts réel** (vraies requêtes HTTP sur chaque URL). Stockage/CDN/limites de taille/nettoyage automatique affichés comme non applicables plutôt que fabriqués. *Décision utilisateur : construire ensuite un vrai système d'upload avec stockage externe (reste à faire — voir §5)*
 
 ---
 
@@ -126,11 +127,14 @@ Déploiement actuel (démo) :
 | Colonnes "Statut", "Dernière connexion", actions invisibles | `.admin-panel { overflow: hidden }` coupait le contenu qui dépassait, sans barre de défilement | `overflow-x: auto` + largeur minimale du tableau |
 | Auto-révocation possible de son propre accès développeur | Aucune protection initiale sur le PUT général ni sur le nouveau flux de confirmation | Bouton masqué pour soi-même + refus serveur explicite |
 | `/api/analytics` renvoyait une erreur serveur (500) | Requête SQL invalide sous `sql_mode=only_full_group_by` (colonne non fonctionnellement dépendante du `GROUP BY`) — bug préexistant, découvert grâce au nouveau panneau "Logs et surveillance" | Remplacement du second `LEFT JOIN` par une sous-requête corrélée pour le titre de secours |
+| Restauration de sauvegarde échouait sur les dates | MySQL refuse une date ISO ("...T...Z") telle quelle pour une colonne DATETIME | Conversion en objet `Date` avant insertion |
+| Restauration de sauvegarde échouait sur `site_settings.data` (colonne JSON) | mysql2 désérialise une colonne JSON en objet JS à la lecture ; réinséré tel quel, MySQL recevait littéralement "[object Object]" | Reserialisation en JSON avant insertion |
 
 ---
 
 ## 5. Fonctionnalités restantes à développer
 
+- [ ] **Vrai système d'upload de fichiers** avec stockage externe (ex: Cloudinary, S3) — demandé par l'utilisateur suite au constat qu'aucun upload n'existe actuellement (images/vidéos = URL externes collées manuellement) ; nécessite de choisir un fournisseur de stockage avant de commencer
 - [ ] Gérer les endpoints/routes d'`articles.js` et `videos.js` : gate déjà en place pour `canPublishDirectly`, à re-vérifier après tout futur changement de hiérarchie
 - [ ] Application de la partie "Gestion de l'API" — vérifier long terme la pertinence de suivre plus finement les erreurs 4xx/5xx par route
 - [ ] Migration vers un hébergement définitif (Hostinger pressenti) pour lever les limitations Render/Aiven gratuits (veille, cron horaire fiable)
