@@ -141,9 +141,21 @@ app.listen(PORT, () => {
   console.log(`Cortex Bénin TV API en écoute sur le port ${PORT}`);
 });
 
+// Enregistre l'heure réelle du dernier passage de chaque tâche planifiée,
+// pour pouvoir honnêtement détecter dans le tableau de bord développeur
+// qu'une tâche ne tourne plus (ex: service endormi sur l'hébergeur gratuit).
+function recordCronRun(key) {
+  const now = new Date().toISOString();
+  return pool
+    .query("INSERT INTO system_meta (`key`, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = ?", [key, now, now])
+    .catch(() => {});
+}
+
 // Rafraîchit les flux RSS agrégés toutes les 30 minutes
 cron.schedule('*/30 * * * *', () => {
-  fetchAllFeeds().catch((err) => console.error('Erreur de rafraîchissement des flux:', err));
+  fetchAllFeeds()
+    .then(() => recordCronRun('cron_feed_fetch_last_run'))
+    .catch((err) => console.error('Erreur de rafraîchissement des flux:', err));
 });
 
 // Toutes les heures : transforme les nouvelles actualités détectées en
@@ -151,7 +163,10 @@ cron.schedule('*/30 * * * *', () => {
 // (jamais publiés automatiquement).
 cron.schedule('0 * * * *', () => {
   createDraftsFromNewFeedItems()
-    .then(({ created }) => created && console.log(`${created} brouillon(s) d'article créé(s) depuis la veille.`))
+    .then(({ created }) => {
+      if (created) console.log(`${created} brouillon(s) d'article créé(s) depuis la veille.`);
+      return recordCronRun('cron_draft_creation_last_run');
+    })
     .catch((err) => console.error('Erreur de création de brouillons depuis les flux:', err));
 });
 
@@ -159,5 +174,6 @@ cron.schedule('0 * * * *', () => {
 cron.schedule('* * * * *', () => {
   pool
     .query("UPDATE articles SET status = 'published' WHERE status = 'scheduled' AND published_at <= NOW()")
+    .then(() => recordCronRun('cron_scheduled_publish_last_run'))
     .catch((err) => console.error('Erreur de publication programmée:', err));
 });

@@ -47,6 +47,19 @@ export function trackError(err, req) {
   if (state.recentErrors.length > MAX_ERROR_SAMPLES) state.recentErrors.length = MAX_ERROR_SAMPLES;
 }
 
+// Remet à zéro les compteurs en mémoire (requêtes, erreurs, temps de
+// réponse) sans toucher à quoi que ce soit en base — l'équivalent le plus
+// honnête d'un "vider le cache" dans cette application, qui n'a pas de vrai
+// cache serveur (Redis, CDN...) à proprement parler.
+export function resetMetrics() {
+  state.requestCount = 0;
+  state.errorCount = 0;
+  state.responseTimes.length = 0;
+  state.recentErrors.length = 0;
+  state.routeCounts.clear();
+  state.routeErrorCounts.clear();
+}
+
 export function getMetrics() {
   const avg =
     state.responseTimes.length > 0

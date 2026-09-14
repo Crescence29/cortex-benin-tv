@@ -5,7 +5,7 @@ import { pool } from '../db/pool.js';
 import { requireAuth } from '../middleware/auth.js';
 import { requireDeveloper } from '../middleware/requireDeveloper.js';
 import { logActivity, clientIp } from '../lib/logActivity.js';
-import { getMetrics } from '../lib/systemMetrics.js';
+import { getMetrics, resetMetrics } from '../lib/systemMetrics.js';
 import { getRoutes } from '../lib/apiRegistry.js';
 import { RATE_LIMITS } from '../middleware/rateLimit.js';
 import { startPending, checkPending, CONFIRM_TTL_MS } from '../lib/pendingConfirmations.js';
@@ -624,6 +624,124 @@ router.get('/config-overview', requireAuth, requireDeveloper, async (req, res) =
     envVars,
     storageNote: "Aucun système d'upload de fichiers n'existe sur ce site : pas de stockage ni de CDN à configurer (voir le panneau \"Fichiers et médias\").",
   });
+});
+
+// Centre de maintenance : rassemble en un seul endroit les vraies actions déjà
+// disponibles ailleurs (sauvegarde, restauration, mode maintenance) et ajoute
+// ce qui n'existait pas encore : suivi réel des tâches planifiées (utile ici
+// précisément parce que le cron horaire de brouillons s'était déjà tu sur
+// Render en veille — voir rapport.md), et une réinitialisation honnête des
+// compteurs en mémoire (pas de vrai cache serveur/CDN à vider dans cette appli).
+// "Redémarrer un service" et "nettoyer des fichiers temporaires" ne sont
+// volontairement PAS proposés ici : cette application n'a ni accès à l'API
+// de l'hébergeur pour redémarrer quoi que ce soit, ni fichiers temporaires
+// générés par elle-même (voir le panneau "Fichiers et médias").
+const SCHEDULED_TASKS = [
+  { key: 'cron_feed_fetch_last_run', label: 'Récupération des flux RSS', everyMinutes: 30, overdueAfterMinutes: 45 },
+  { key: 'cron_draft_creation_last_run', label: 'Création de brouillons depuis les flux', everyMinutes: 60, overdueAfterMinutes: 90 },
+  { key: 'cron_scheduled_publish_last_run', label: 'Publication des articles programmés', everyMinutes: 1, overdueAfterMinutes: 5 },
+];
+
+router.get('/maintenance-overview', requireAuth, requireDeveloper, async (_req, res) => {
+  const [[settingsRow]] = await pool.query("SELECT data FROM site_settings WHERE id = 'main'");
+  const settings = settingsRow?.data || {};
+
+  const [metaRows] = await pool.query(
+    "SELECT `key`, value FROM system_meta WHERE `key` IN (?, ?, ?, 'last_backup_at')",
+    SCHEDULED_TASKS.map((t) => t.key)
+  );
+  const metaByKey = Object.fromEntries(metaRows.map((r) => [r.key, r.value]));
+
+  const now = Date.now();
+  const scheduledTasks = SCHEDULED_TASKS.map((t) => {
+    const lastRunAt = metaByKey[t.key] || null;
+    const minutesSinceLastRun = lastRunAt ? (now - new Date(lastRunAt).getTime()) / 60000 : null;
+    return {
+      label: t.label,
+      everyMinutes: t.everyMinutes,
+      lastRunAt,
+      overdue: minutesSinceLastRun === null ? null : minutesSinceLastRun > t.overdueAfterMinutes,
+    };
+  });
+
+  res.json({
+    maintenanceMode: !!settings.maintenance_mode,
+    lastBackupAt: metaByKey.last_backup_at || null,
+    scheduledTasks,
+    metrics: getMetrics(),
+    cacheNote: "Cette application ne dispose pas de cache serveur (Redis, CDN...) : les pages et l'API sont générées à chaque requête depuis la base de données. Il n'y a donc rien à \"vider\" à ce niveau — seuls les compteurs de métriques ci-dessous vivent en mémoire et peuvent être réinitialisés.",
+    unavailableNote: "Redémarrage de service et nettoyage de fichiers temporaires non proposés : aucun accès à l'API de l'hébergeur pour le premier, aucun fichier temporaire généré par cette application pour le second.",
+  });
+});
+
+router.post('/maintenance/check-services', requireAuth, requireDeveloper, async (_req, res) => {
+  const dbStart = Date.now();
+  let db = 'error';
+  try {
+    await pool.query('SELECT 1');
+    db = 'ok';
+  } catch {
+    db = 'error';
+  }
+  const [[feedCount]] = await pool.query('SELECT COUNT(*) AS total FROM feed_sources WHERE active = TRUE');
+
+  res.json({
+    api: 'ok',
+    db,
+    dbLatencyMs: Date.now() - dbStart,
+    activeFeedSources: feedCount.total,
+    checkedAt: new Date().toISOString(),
+  });
+});
+
+const pendingMaintenanceEnable = new Map();
+
+// Activer le mode maintenance bloque le site public pour de vrais visiteurs :
+// c'est l'opération la plus "dangereuse" de ce centre, donc la seule qui
+// exige une confirmation par code. La désactiver (restaurer le service
+// normal) reste un simple appel à PUT /api/settings, sans friction.
+router.post('/maintenance/enable/start', requireAuth, requireDeveloper, async (req, res) => {
+  const code = startPending(pendingMaintenanceEnable, req.user.id, { actorId: req.user.id });
+  res.json({ code, expiresInSeconds: CONFIRM_TTL_MS / 1000 });
+});
+
+router.post('/maintenance/enable/confirm', requireAuth, requireDeveloper, async (req, res) => {
+  const check = checkPending(pendingMaintenanceEnable, req.user.id, req.body.code, req.user.id);
+  if (!check.ok) return res.status(400).json({ error: check.error });
+
+  const message = typeof req.body.message === 'string' ? req.body.message : '';
+  const [[row]] = await pool.query("SELECT data FROM site_settings WHERE id = 'main'");
+  const current = row?.data || {};
+  const next = { ...current, maintenance_mode: true, ...(message ? { maintenance_message: message } : {}) };
+  await pool.query(
+    "INSERT INTO site_settings (id, data) VALUES ('main', ?) ON DUPLICATE KEY UPDATE data = ?",
+    [JSON.stringify(next), JSON.stringify(next)]
+  );
+
+  await logActivity({
+    actorId: req.user.id,
+    actorName: req.user.name,
+    actorRole: req.user.role,
+    action: 'settings_updated',
+    targetType: 'site_settings',
+    targetId: 'main',
+    details: 'maintenance_mode=true (activé depuis le Centre de maintenance)',
+    ip: clientIp(req),
+  });
+
+  res.json({ ok: true, settings: next });
+});
+
+router.post('/maintenance/reset-metrics', requireAuth, requireDeveloper, async (req, res) => {
+  resetMetrics();
+  await logActivity({
+    actorId: req.user.id,
+    actorName: req.user.name,
+    actorRole: req.user.role,
+    action: 'metrics_reset',
+    ip: clientIp(req),
+  });
+  res.json({ ok: true });
 });
 
 // Sauvegarde manuelle : exporte le contenu réel de chaque table en JSON et

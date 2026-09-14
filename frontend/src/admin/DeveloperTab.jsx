@@ -21,6 +21,7 @@ import {
   IconUpload,
   IconImage,
   IconRocket,
+  IconSliders,
 } from '../components/Icons';
 
 function formatBytes(bytes) {
@@ -489,6 +490,7 @@ const ACTION_META = {
   user_unbanned: { label: 'Compte débanni', icon: IconRefresh },
   impersonation_started: { label: 'Connexion en tant qu\'un autre compte', icon: IconUserPlus },
   database_restored: { label: 'Base de données restaurée', icon: IconDatabase },
+  metrics_reset: { label: 'Compteurs de métriques réinitialisés', icon: IconSliders },
   password_reset: { label: 'Mot de passe réinitialisé', icon: IconLock },
   developer_access_granted: { label: 'Accès développeur accordé', icon: IconShield },
   developer_access_revoked: { label: 'Accès développeur retiré', icon: IconShield },
@@ -1431,6 +1433,263 @@ function ConfigPanel() {
   );
 }
 
+function ScheduledTasksList({ tasks }) {
+  return (
+    <ul className="detail-list">
+      {tasks.map((t) => (
+        <li key={t.label}>
+          <span>
+            {t.overdue !== null && <StatusDot ok={!t.overdue} />} {t.label} (toutes les {t.everyMinutes} min)
+          </span>
+          <span>{t.lastRunAt ? new Date(t.lastRunAt).toLocaleString('fr-FR') : 'Jamais observé'}{t.overdue ? ' — en retard' : ''}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function MaintenanceEnableControl({ onDone }) {
+  const [message, setMessage] = useState('');
+  const [pending, setPending] = useState(null);
+  const [input, setInput] = useState('');
+  const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  async function onStart() {
+    if (!confirm('Le mode maintenance va bloquer le site public pour tous les visiteurs. Continuer ?')) return;
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await api.startEnableMaintenance();
+      setPending(res);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onConfirm(e) {
+    e.preventDefault();
+    setError(null);
+    setBusy(true);
+    try {
+      await api.confirmEnableMaintenance(input, message);
+      setPending(null);
+      setInput('');
+      onDone();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!pending) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
+        <input
+          style={{ width: '100%', maxWidth: 380 }}
+          placeholder="Message affiché aux visiteurs (optionnel)"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+        />
+        <button type="button" className="btn btn--sm btn--danger" onClick={onStart} disabled={busy}>
+          <IconAlertTriangle /> Activer le mode maintenance
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={onConfirm} className="dev-access-confirm">
+      <p>
+        Code de confirmation généré : <strong>{pending.code}</strong>
+        <br />
+        Retape-le pour bloquer immédiatement le site public.
+      </p>
+      <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Code à 6 chiffres" autoFocus required />
+      <button type="submit" className="btn btn--sm btn--danger" disabled={busy}>Confirmer</button>
+      <button type="button" className="btn btn--sm btn--outline" onClick={() => { setPending(null); setInput(''); setError(null); }}>
+        Annuler
+      </button>
+      {error && <span className="admin-form__error" style={{ margin: 0 }}>{error}</span>}
+    </form>
+  );
+}
+
+function MaintenanceCenterPanel() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [openKey, setOpenKey] = useState(null);
+  const [checkResult, setCheckResult] = useState(null);
+  const [checking, setChecking] = useState(false);
+  const [backing, setBacking] = useState(false);
+  const [backupMsg, setBackupMsg] = useState(null);
+  const [resetting, setResetting] = useState(false);
+  const [resetMsg, setResetMsg] = useState(null);
+
+  function load() {
+    api.getMaintenanceOverview().then(setData).finally(() => setLoading(false));
+  }
+
+  useEffect(load, []);
+
+  async function onCheckServices() {
+    setChecking(true);
+    try {
+      setCheckResult(await api.checkServicesNow());
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  async function onBackup() {
+    setBacking(true);
+    setBackupMsg(null);
+    try {
+      const result = await api.triggerBackup();
+      const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `cortex-backup-${result.createdAt.slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setBackupMsg(`Sauvegarde téléchargée — ${result.tables} tables exportées.`);
+      load();
+    } catch (err) {
+      setBackupMsg(err.message);
+    } finally {
+      setBacking(false);
+    }
+  }
+
+  async function onDisableMaintenance() {
+    try {
+      await api.updateSettings({ maintenance_mode: false });
+      setLogoState({ maintenance_mode: false });
+      load();
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  async function onResetMetrics() {
+    if (!confirm('Réinitialiser les compteurs de métriques (requêtes, erreurs, temps de réponse) ?')) return;
+    setResetting(true);
+    setResetMsg(null);
+    try {
+      await api.resetMetrics();
+      setResetMsg('Compteurs réinitialisés.');
+      load();
+    } catch (err) {
+      setResetMsg(err.message);
+    } finally {
+      setResetting(false);
+    }
+  }
+
+  if (loading && !data) {
+    return (
+      <div className="admin-panel">
+        <div className="admin-panel__header"><h2><IconSliders /> Centre de maintenance</h2></div>
+        <div className="admin-empty">Chargement…</div>
+      </div>
+    );
+  }
+  if (!data) return null;
+
+  return (
+    <div className="admin-panel">
+      <div className="admin-panel__header">
+        <h2><IconSliders /> Centre de maintenance</h2>
+        <button type="button" className="btn btn--sm btn--outline" onClick={load}>
+          <IconRefresh /> Actualiser
+        </button>
+      </div>
+
+      <div className="system-status-grid">
+        <DetailRow
+          label="Vérifier les services" detailKey="maint-check" openKey={openKey} setOpenKey={setOpenKey}
+          value={checking ? 'Vérification…' : checkResult ? `API ${checkResult.api} · DB ${checkResult.db} (${checkResult.dbLatencyMs} ms) · ${checkResult.activeFeedSources} flux actifs` : 'Jamais vérifié'}
+        >
+          <div style={{ padding: '10px 20px' }}>
+            <button type="button" className="btn btn--sm btn--outline" onClick={onCheckServices} disabled={checking}>
+              <IconRefresh /> Vérifier maintenant
+            </button>
+          </div>
+        </DetailRow>
+
+        <DetailRow
+          label="Sauvegarde" detailKey="maint-backup" openKey={openKey} setOpenKey={setOpenKey}
+          value={data.lastBackupAt ? `Dernière : ${new Date(data.lastBackupAt).toLocaleString('fr-FR')}` : 'Aucune sauvegarde'}
+        >
+          <div style={{ padding: '10px 20px' }}>
+            {backupMsg && <p className="admin-form__success" style={{ marginTop: 0 }}>{backupMsg}</p>}
+            <button type="button" className="btn btn--sm btn--outline" onClick={onBackup} disabled={backing}>
+              <IconRefresh /> {backing ? 'Sauvegarde…' : 'Lancer une sauvegarde maintenant'}
+            </button>
+          </div>
+        </DetailRow>
+
+        <DetailRow
+          label="Restauration" detailKey="maint-restore" openKey={openKey} setOpenKey={setOpenKey}
+          value="Depuis une sauvegarde JSON"
+        >
+          <RestorePanel onDone={load} />
+        </DetailRow>
+
+        <DetailRow
+          label="Tâches programmées" detailKey="maint-cron" openKey={openKey} setOpenKey={setOpenKey}
+          value={data.scheduledTasks.some((t) => t.overdue) ? 'Au moins une tâche en retard' : 'À jour'}
+          statusOk={!data.scheduledTasks.some((t) => t.overdue)}
+        >
+          <ScheduledTasksList tasks={data.scheduledTasks} />
+        </DetailRow>
+
+        <DetailRow
+          label="Caches" detailKey="maint-cache" openKey={openKey} setOpenKey={setOpenKey}
+          value={`${data.metrics.requestCount} requêtes en mémoire depuis le démarrage`}
+        >
+          <div style={{ padding: '10px 20px' }}>
+            <p className="admin-empty" style={{ padding: 0, textAlign: 'left', marginBottom: 10 }}>{data.cacheNote}</p>
+            {resetMsg && <p className="admin-form__success" style={{ marginTop: 0 }}>{resetMsg}</p>}
+            <button type="button" className="btn btn--sm btn--outline" onClick={onResetMetrics} disabled={resetting}>
+              <IconRefresh /> Réinitialiser les compteurs de métriques
+            </button>
+          </div>
+        </DetailRow>
+
+        <DetailRow
+          label="Redémarrage de service / nettoyage" detailKey="maint-unavailable" openKey={openKey} setOpenKey={setOpenKey}
+          value="Non disponible"
+        >
+          <p className="admin-empty" style={{ padding: '10px 20px' }}>{data.unavailableNote}</p>
+        </DetailRow>
+
+        <DetailRow
+          label="⚠️ Mode maintenance" detailKey="maint-toggle" openKey={openKey} setOpenKey={setOpenKey}
+          statusOk={!data.maintenanceMode}
+          value={data.maintenanceMode ? 'Activé — site public bloqué' : 'Désactivé'}
+        >
+          <div style={{ padding: '10px 20px' }}>
+            {data.maintenanceMode ? (
+              <button type="button" className="btn btn--sm btn--outline" onClick={onDisableMaintenance}>
+                <IconRefresh /> Désactiver le mode maintenance
+              </button>
+            ) : (
+              <MaintenanceEnableControl onDone={load} />
+            )}
+          </div>
+        </DetailRow>
+      </div>
+    </div>
+  );
+}
+
 function LogsPanel() {
   const [data, setData] = useState(null);
   const [query, setQuery] = useState('');
@@ -1618,6 +1877,7 @@ export default function DeveloperTab() {
       <MediaPanel />
       <DeploymentPanel />
       <ConfigPanel />
+      <MaintenanceCenterPanel />
       <LogsPanel />
       <AdminAccessPanel />
       <ActivityLog />

@@ -118,6 +118,12 @@ export const api = {
   checkMediaLinks: () => request('/admin/media-overview/check-links', { method: 'POST' }),
   getDeploymentOverview: () => request('/admin/deployment-overview'),
   getConfigOverview: () => request('/admin/config-overview'),
+  getMaintenanceOverview: () => request('/admin/maintenance-overview'),
+  checkServicesNow: () => request('/admin/maintenance/check-services', { method: 'POST' }),
+  resetMetrics: () => request('/admin/maintenance/reset-metrics', { method: 'POST' }),
+  startEnableMaintenance: () => request('/admin/maintenance/enable/start', { method: 'POST' }),
+  confirmEnableMaintenance: (code, message) =>
+    request('/admin/maintenance/enable/confirm', { method: 'POST', body: JSON.stringify({ code, message }) }),
   runIntegrityCheck: () => request('/admin/database-overview/integrity-check', { method: 'POST' }),
   startDatabaseRestore: (backup) =>
     request('/admin/database-overview/restore/start', { method: 'POST', body: JSON.stringify({ backup }) }),
