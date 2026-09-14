@@ -963,8 +963,6 @@
   grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
   gap: 8px;
   justify-items: stretch;
-  max-width: 620px;
-  margin-left: auto;
 }
 
 .row-actions--wrap > .btn {
