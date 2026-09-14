@@ -20,6 +20,7 @@ import {
   IconDatabase,
   IconUpload,
   IconImage,
+  IconRocket,
 } from '../components/Icons';
 
 function formatBytes(bytes) {
@@ -1157,6 +1158,120 @@ function MediaPanel() {
   );
 }
 
+function CommitList({ commits, deployedCommit }) {
+  if (!commits || commits.length === 0) return <p className="admin-empty" style={{ padding: '10px 20px' }}>Historique indisponible.</p>;
+  return (
+    <ul className="detail-list">
+      {commits.map((c) => (
+        <li key={c.sha}>
+          <span>
+            {c.isDeployed && <span className="badge badge--ok" style={{ marginRight: 6 }}>Déployé</span>}
+            <a href={c.url} target="_blank" rel="noopener noreferrer"><code>{c.sha.slice(0, 7)}</code></a> — {c.message}
+          </span>
+          <span>{c.author} · {new Date(c.date).toLocaleString('fr-FR')}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function DeploymentPanel() {
+  const [deploy, setDeploy] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [openKey, setOpenKey] = useState(null);
+
+  function load() {
+    api.getDeploymentOverview().then(setDeploy).finally(() => setLoading(false));
+  }
+
+  useEffect(load, []);
+
+  if (loading && !deploy) {
+    return (
+      <div className="admin-panel">
+        <div className="admin-panel__header"><h2><IconRocket /> Déploiement et versions</h2></div>
+        <div className="admin-empty">Chargement…</div>
+      </div>
+    );
+  }
+  if (!deploy) return null;
+
+  return (
+    <div className="admin-panel">
+      <div className="admin-panel__header">
+        <h2><IconRocket /> Déploiement et versions</h2>
+        <button type="button" className="btn btn--sm btn--outline" onClick={load}>
+          <IconRefresh /> Actualiser
+        </button>
+      </div>
+
+      <div className="system-status-grid">
+        <DetailRow
+          label="Environnement" detailKey="deploy-env" openKey={openKey} setOpenKey={setOpenKey}
+          value={deploy.environment}
+        >
+          <p className="admin-empty" style={{ padding: '10px 20px' }}>
+            Il n'existe qu'un seul environnement pour l'instant : chaque push sur la branche <code>main</code>
+            est automatiquement déployé sur Render (backend) et Vercel (frontend). Pas de staging séparé.
+          </p>
+        </DetailRow>
+
+        <DetailRow
+          label="Version de l'application" detailKey="deploy-version" openKey={openKey} setOpenKey={setOpenKey}
+          value={`v${deploy.appVersion}`}
+        >
+          <p className="admin-empty" style={{ padding: '10px 20px' }}>
+            Numéro défini dans <code>package.json</code>. Aucune version taguée sur Git pour l'instant —
+            le suivi précis se fait par commit (voir "Statut du déploiement" et l'historique ci-dessous).
+          </p>
+        </DetailRow>
+
+        <DetailRow
+          label="Statut du déploiement" detailKey="deploy-status" openKey={openKey} setOpenKey={setOpenKey}
+          statusOk={deploy.isUpToDate !== false}
+          value={
+            deploy.isUpToDate === null
+              ? 'Impossible à déterminer'
+              : deploy.isUpToDate
+                ? 'À jour avec le dernier commit'
+                : 'En retard sur le dernier commit GitHub'
+          }
+        >
+          <div style={{ padding: '10px 20px' }}>
+            <p style={{ margin: '0 0 8px' }}>
+              Commit déployé (Render) : <code>{deploy.deployedCommit ? deploy.deployedCommit.slice(0, 7) : 'non communiqué'}</code>
+            </p>
+            <p style={{ margin: 0 }}>
+              Dernier commit sur GitHub (<code>main</code>) :{' '}
+              {deploy.latestCommit ? (
+                <a href={deploy.latestCommit.url} target="_blank" rel="noopener noreferrer">
+                  <code>{deploy.latestCommit.sha.slice(0, 7)}</code> — {deploy.latestCommit.message}
+                </a>
+              ) : (
+                deploy.githubError || 'indisponible'
+              )}
+            </p>
+          </div>
+        </DetailRow>
+
+        <DetailRow
+          label="Historique des déploiements / changelog" detailKey="deploy-history" openKey={openKey} setOpenKey={setOpenKey}
+          value={`${deploy.recentCommits.length} commit(s) récents`}
+        >
+          <CommitList commits={deploy.recentCommits} deployedCommit={deploy.deployedCommit} />
+        </DetailRow>
+
+        <DetailRow
+          label="Rollback" detailKey="deploy-rollback" openKey={openKey} setOpenKey={setOpenKey}
+          value="Procédure manuelle"
+        >
+          <p className="admin-empty" style={{ padding: '10px 20px' }}>{deploy.rollbackInstructions}</p>
+        </DetailRow>
+      </div>
+    </div>
+  );
+}
+
 function LogsPanel() {
   const [data, setData] = useState(null);
   const [query, setQuery] = useState('');
@@ -1342,6 +1457,7 @@ export default function DeveloperTab() {
       <ApiOverviewPanel />
       <DatabasePanel />
       <MediaPanel />
+      <DeploymentPanel />
       <LogsPanel />
       <AdminAccessPanel />
       <ActivityLog />

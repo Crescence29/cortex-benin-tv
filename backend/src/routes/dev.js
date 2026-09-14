@@ -524,6 +524,72 @@ router.post('/media-overview/check-links', requireAuth, requireDeveloper, async 
   });
 });
 
+// Vue d'ensemble déploiement/versions. Honnête sur ce qui existe vraiment :
+// un seul environnement (tout part sur Render/Vercel à chaque push sur
+// main), aucune version taguée, pas de CHANGELOG.md, pas d'accès à l'API
+// Render pour un rollback automatique. Ce qui EST réel : le commit
+// effectivement déployé (fourni par Render), le dernier commit sur GitHub,
+// et l'historique réel des commits comme journal de déploiement/changelog.
+const GITHUB_REPO = 'Crescence29/cortex-benin-tv';
+
+router.get('/deployment-overview', requireAuth, requireDeveloper, async (_req, res) => {
+  const deployedCommit = process.env.RENDER_GIT_COMMIT || null;
+
+  let latestCommit = null;
+  let recentCommits = [];
+  let githubError = null;
+  try {
+    const [latestRes, listRes] = await Promise.all([
+      fetch(`https://api.github.com/repos/${GITHUB_REPO}/commits/main`, {
+        headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'cortex-benin-tv-dashboard' },
+      }),
+      fetch(`https://api.github.com/repos/${GITHUB_REPO}/commits?sha=main&per_page=20`, {
+        headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'cortex-benin-tv-dashboard' },
+      }),
+    ]);
+    if (latestRes.ok) {
+      const data = await latestRes.json();
+      latestCommit = {
+        sha: data.sha,
+        message: data.commit.message.split('\n')[0],
+        author: data.commit.author.name,
+        date: data.commit.author.date,
+        url: data.html_url,
+      };
+    } else {
+      githubError = `GitHub a répondu ${latestRes.status}`;
+    }
+    if (listRes.ok) {
+      const list = await listRes.json();
+      recentCommits = list.map((c) => ({
+        sha: c.sha,
+        message: c.commit.message.split('\n')[0],
+        author: c.commit.author.name,
+        date: c.commit.author.date,
+        url: c.html_url,
+        isDeployed: deployedCommit ? c.sha.startsWith(deployedCommit) || deployedCommit.startsWith(c.sha) : false,
+      }));
+    }
+  } catch (err) {
+    githubError = `Impossible de contacter GitHub : ${err.message}`;
+  }
+
+  res.json({
+    environment: 'production (environnement unique — pas de staging séparé)',
+    appVersion: process.env.npm_package_version || '1.0.0',
+    deployedCommit,
+    latestCommit,
+    isUpToDate: deployedCommit && latestCommit ? (latestCommit.sha.startsWith(deployedCommit) || deployedCommit.startsWith(latestCommit.sha)) : null,
+    recentCommits,
+    githubError,
+    rollbackInstructions:
+      "Pas de rollback automatique en un clic (nécessiterait un accès à l'API Render, non configuré). " +
+      "Pour revenir en arrière : soit exécuter `git revert <commit>` puis pousser sur `main` (Render/Vercel redéploient automatiquement), " +
+      "soit ouvrir le tableau de bord Render → onglet Deploys → choisir un déploiement précédent → \"Redeploy\".",
+    checkedAt: new Date().toISOString(),
+  });
+});
+
 // Sauvegarde manuelle : exporte le contenu réel de chaque table en JSON et
 // l'envoie en téléchargement, tout en enregistrant la date pour l'afficher
 // ensuite comme "Dernière sauvegarde" sur le dashboard.

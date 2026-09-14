@@ -116,6 +116,7 @@ export const api = {
   getDatabaseOverview: () => request('/admin/database-overview'),
   getMediaOverview: () => request('/admin/media-overview'),
   checkMediaLinks: () => request('/admin/media-overview/check-links', { method: 'POST' }),
+  getDeploymentOverview: () => request('/admin/deployment-overview'),
   runIntegrityCheck: () => request('/admin/database-overview/integrity-check', { method: 'POST' }),
   startDatabaseRestore: (backup) =>
     request('/admin/database-overview/restore/start', { method: 'POST', body: JSON.stringify({ backup }) }),
