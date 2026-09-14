@@ -54,6 +54,20 @@ router.post('/login', async (req, res) => {
   });
 });
 
+router.post('/logout', requireAuth, async (req, res) => {
+  if (req.user.jti) {
+    await pool.query('UPDATE sessions SET revoked_at = NOW() WHERE token_id = ?', [req.user.jti]);
+  }
+  await logActivity({
+    actorId: req.user.id,
+    actorName: req.user.name,
+    actorRole: req.user.role,
+    action: 'logout',
+    ip: clientIp(req),
+  });
+  res.json({ ok: true });
+});
+
 router.put('/password', requireAuth, async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   if (!currentPassword || !newPassword) {

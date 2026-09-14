@@ -17,6 +17,9 @@ export function AuthProvider({ children }) {
   }
 
   function logout() {
+    // On tente de révoquer la session côté serveur (best effort — la
+    // déconnexion locale doit réussir même si l'appel échoue, ex. hors ligne).
+    api.logout().catch(() => {});
     localStorage.removeItem('cortex_token');
     localStorage.removeItem('cortex_user');
     setUser(null);

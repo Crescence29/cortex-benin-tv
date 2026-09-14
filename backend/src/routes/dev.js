@@ -11,10 +11,105 @@ import { RATE_LIMITS } from '../middleware/rateLimit.js';
 
 const router = Router();
 
-// Historique complet conservé en base ; on ne renvoie que les 500 entrées les plus récentes.
-router.get('/activity-logs', requireAuth, requireDeveloper, async (_req, res) => {
+// Historique complet conservé en base ; on ne renvoie que les 500 entrées les plus
+// récentes, avec une recherche optionnelle (?q=) sur l'acteur, l'action et le détail.
+router.get('/activity-logs', requireAuth, requireDeveloper, async (req, res) => {
+  const { q } = req.query;
+  if (q) {
+    const like = `%${q}%`;
+    const [rows] = await pool.query(
+      `SELECT * FROM activity_logs
+       WHERE actor_name LIKE ? OR action LIKE ? OR details LIKE ? OR ip_address LIKE ?
+       ORDER BY created_at DESC LIMIT 500`,
+      [like, like, like, like]
+    );
+    return res.json(rows);
+  }
   const [rows] = await pool.query('SELECT * FROM activity_logs ORDER BY created_at DESC LIMIT 500');
   res.json(rows);
+});
+
+// Vue "Logs et surveillance" : rassemble en une liste unique, catégorisée et
+// cherchable, tout ce qui peut réellement se produire sur ce service — erreurs
+// serveur (exceptions), erreurs API (réponses en échec par endpoint), erreurs
+// JS côté navigateur, connexions/déconnexions, échecs d'authentification et
+// erreurs de synchronisation des flux RSS. Il n'y a pas de système de paiement
+// dans cette application : la catégorie existe pour respecter le format demandé
+// mais reste honnêtement vide plutôt que de fabriquer de fausses transactions.
+router.get('/logs-overview', requireAuth, requireDeveloper, async (req, res) => {
+  const { q } = req.query;
+  const metrics = getMetrics();
+
+  const categorized = {
+    login_success: 'Connexion',
+    logout: 'Déconnexion',
+    login_failed: 'Échec d\'authentification',
+    sync_error: 'Erreur de synchronisation',
+    client_js_error: 'Erreur JavaScript',
+  };
+  const actions = Object.keys(categorized);
+  const placeholders = actions.map(() => '?').join(',');
+  const like = q ? `%${q}%` : null;
+
+  const [rows] = await pool.query(
+    `SELECT * FROM activity_logs
+     WHERE action IN (${placeholders})
+     ${like ? 'AND (actor_name LIKE ? OR details LIKE ? OR ip_address LIKE ?)' : ''}
+     ORDER BY created_at DESC LIMIT 300`,
+    like ? [...actions, like, like, like] : actions
+  );
+
+  const events = rows.map((r) => ({
+    level: r.action === 'login_failed' || r.action === 'sync_error' || r.action === 'client_js_error' ? 'error' : 'info',
+    category: categorized[r.action] || r.action,
+    label: r.actor_name || 'Visiteur',
+    details: r.details,
+    ip: r.ip_address,
+    at: r.created_at,
+  }));
+
+  const serverErrors = metrics.recentErrors
+    .filter((e) => !q || `${e.message} ${e.path}`.toLowerCase().includes(q.toLowerCase()))
+    .map((e) => ({
+      level: 'error',
+      category: 'Erreur serveur',
+      label: `${e.method || ''} ${e.path || ''}`.trim(),
+      details: e.message,
+      ip: null,
+      at: e.at,
+    }));
+
+  const apiErrors = metrics.endpointStats
+    .filter((s) => s.errors > 0)
+    .filter((s) => !q || s.route.toLowerCase().includes(q.toLowerCase()))
+    .map((s) => ({
+      level: 'error',
+      category: 'Erreur API',
+      label: s.route,
+      details: `${s.errors} réponse${s.errors > 1 ? 's' : ''} en erreur sur ${s.count} appel${s.count > 1 ? 's' : ''}`,
+      ip: null,
+      at: null,
+    }));
+
+  const all = [...serverErrors, ...apiErrors, ...events].sort((a, b) => {
+    if (!a.at) return 1;
+    if (!b.at) return -1;
+    return new Date(b.at) - new Date(a.at);
+  });
+
+  res.json({
+    events: all,
+    counts: {
+      connexions: rows.filter((r) => r.action === 'login_success').length,
+      deconnexions: rows.filter((r) => r.action === 'logout').length,
+      echecsAuth: rows.filter((r) => r.action === 'login_failed').length,
+      erreursSync: rows.filter((r) => r.action === 'sync_error').length,
+      erreursJs: rows.filter((r) => r.action === 'client_js_error').length,
+      erreursServeur: serverErrors.length,
+      erreursApi: apiErrors.length,
+    },
+    paymentNote: "Aucun système de paiement n'existe sur ce site : cette catégorie ne peut donc produire aucune erreur.",
+  });
 });
 
 function diskUsage() {

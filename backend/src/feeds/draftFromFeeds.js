@@ -1,6 +1,7 @@
 import slugify from 'slugify';
 import { pool } from '../db/pool.js';
 import { sanitizeArticleHtml } from '../lib/sanitize.js';
+import { logActivity } from '../lib/logActivity.js';
 
 const MAX_DRAFTS_PER_RUN = 20;
 
@@ -66,6 +67,12 @@ export async function createDraftsFromNewFeedItems() {
     } catch (err) {
       await conn.rollback();
       console.error('Erreur création brouillon depuis flux:', item.link, err.message);
+      await logActivity({
+        action: 'sync_error',
+        targetType: 'feed_item',
+        targetId: item.id,
+        details: `Brouillon depuis ${item.link} — ${err.message}`,
+      });
     } finally {
       conn.release();
     }

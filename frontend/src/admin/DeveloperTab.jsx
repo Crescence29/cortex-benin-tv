@@ -466,15 +466,23 @@ function ApiOverviewPanel() {
   );
 }
 
-const SENSITIVE_ACTIONS = new Set(['login_failed', 'role_changed', 'user_deleted', 'password_reset']);
+const SENSITIVE_ACTIONS = new Set(['login_failed', 'role_changed', 'user_deleted', 'password_reset', 'developer_access_granted', 'developer_access_revoked']);
 
 const ACTION_META = {
   login_success: { label: 'Connexion réussie', icon: IconLogIn },
   login_failed: { label: 'Échec de connexion', icon: IconAlertTriangle },
+  logout: { label: 'Déconnexion', icon: IconLogIn },
   user_created: { label: 'Compte créé', icon: IconUserPlus },
   role_changed: { label: 'Rôle modifié', icon: IconShield },
   user_deleted: { label: 'Compte supprimé', icon: IconTrash },
+  user_deactivated: { label: 'Compte désactivé', icon: IconLock },
+  user_reactivated: { label: 'Compte réactivé', icon: IconRefresh },
   password_reset: { label: 'Mot de passe réinitialisé', icon: IconLock },
+  developer_access_granted: { label: 'Accès développeur accordé', icon: IconShield },
+  developer_access_revoked: { label: 'Accès développeur retiré', icon: IconShield },
+  force_logout: { label: 'Déconnexion forcée', icon: IconLogIn },
+  sync_error: { label: 'Erreur de synchronisation', icon: IconAlertTriangle },
+  client_js_error: { label: 'Erreur JavaScript (navigateur)', icon: IconAlertTriangle },
   settings_updated: { label: 'Réglages modifiés', icon: IconSettings },
   live_started: { label: 'Direct démarré', icon: IconBroadcast },
   live_stopped: { label: 'Direct arrêté', icon: IconBroadcast },
@@ -580,26 +588,40 @@ function AdminAccessPanel() {
 function ActivityLog() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
 
-  function load() {
-    api.getActivityLogs().then(setLogs).finally(() => setLoading(false));
+  function load(q) {
+    api.getActivityLogs(q).then(setLogs).finally(() => setLoading(false));
   }
 
   useEffect(() => {
-    load();
-    const interval = setInterval(load, 15000);
+    const timeout = setTimeout(() => load(query), 300);
+    return () => clearTimeout(timeout);
+  }, [query]);
+
+  useEffect(() => {
+    const interval = setInterval(() => load(query), 15000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <div className="admin-panel">
       <div className="admin-panel__header">
-        <h2>Journal d'activité</h2>
-        <button type="button" className="btn btn--sm btn--outline" onClick={load}>
+        <h2>Journal d'audit — qui a fait quoi ?</h2>
+        <button type="button" className="btn btn--sm btn--outline" onClick={() => load(query)}>
           <IconRefresh /> Actualiser
         </button>
       </div>
-      {!loading && logs.length === 0 && <div className="admin-empty">Aucun événement enregistré.</div>}
+      <div className="log-search">
+        <input
+          type="search"
+          placeholder="Rechercher (personne, action, IP...)"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </div>
+      {!loading && logs.length === 0 && <div className="admin-empty">Aucun événement trouvé.</div>}
       <div className="activity-log">
         {logs.map((log) => {
           const meta = ACTION_META[log.action] || { label: log.action, icon: IconSettings };
@@ -626,6 +648,87 @@ function ActivityLog() {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function LogsPanel() {
+  const [data, setData] = useState(null);
+  const [query, setQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  function load(q) {
+    api.getLogsOverview(q).then(setData).finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    const timeout = setTimeout(() => load(query), 300);
+    return () => clearTimeout(timeout);
+  }, [query]);
+
+  useEffect(() => {
+    const interval = setInterval(() => load(query), 20000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (loading && !data) {
+    return (
+      <div className="admin-panel">
+        <div className="admin-panel__header"><h2>Logs et surveillance</h2></div>
+        <div className="admin-empty">Chargement…</div>
+      </div>
+    );
+  }
+  if (!data) return null;
+
+  return (
+    <div className="admin-panel">
+      <div className="admin-panel__header">
+        <h2>Logs et surveillance</h2>
+        <button type="button" className="btn btn--sm btn--outline" onClick={() => load(query)}>
+          <IconRefresh /> Actualiser
+        </button>
+      </div>
+
+      <div className="log-search">
+        <input
+          type="search"
+          placeholder="Rechercher dans les logs (message, route, IP...)"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </div>
+
+      <div className="log-counters">
+        <span>Connexions : <strong>{data.counts.connexions}</strong></span>
+        <span>Déconnexions : <strong>{data.counts.deconnexions}</strong></span>
+        <span>Échecs d'auth : <strong>{data.counts.echecsAuth}</strong></span>
+        <span>Erreurs sync : <strong>{data.counts.erreursSync}</strong></span>
+        <span>Erreurs JS : <strong>{data.counts.erreursJs}</strong></span>
+        <span>Erreurs serveur : <strong>{data.counts.erreursServeur}</strong></span>
+        <span>Erreurs API : <strong>{data.counts.erreursApi}</strong></span>
+        <span className="log-counters__disabled">Erreurs de paiement : N/A</span>
+      </div>
+
+      {data.events.length === 0 ? (
+        <p className="admin-empty" style={{ padding: '10px 20px' }}>Aucun événement ne correspond.</p>
+      ) : (
+        <div className="log-lines">
+          {data.events.map((e, i) => (
+            <div className={'log-line' + (e.level === 'error' ? ' log-line--error' : '')} key={i}>
+              <span className="log-line__tag">{e.level === 'error' ? '[ERROR]' : '[INFO]'}</span>
+              <span className="log-line__time">{e.at ? new Date(e.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '—'}</span>
+              <span className="log-line__category">{e.category}</span>
+              <span className="log-line__label">{e.label}</span>
+              {e.details && <span className="log-line__details">{e.details}</span>}
+              {e.ip && <span className="log-line__ip">IP {e.ip}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <p className="admin-empty" style={{ padding: '10px 20px', fontStyle: 'italic' }}>{data.paymentNote}</p>
     </div>
   );
 }
@@ -732,6 +835,7 @@ export default function DeveloperTab() {
 
       <SystemStatusPanel />
       <ApiOverviewPanel />
+      <LogsPanel />
       <AdminAccessPanel />
       <ActivityLog />
       <IdentityPanel />

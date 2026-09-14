@@ -1,5 +1,6 @@
 import Parser from 'rss-parser';
 import { pool } from '../db/pool.js';
+import { logActivity } from '../lib/logActivity.js';
 
 const parser = new Parser();
 
@@ -33,6 +34,12 @@ export async function fetchAllFeeds() {
       await pool.query('UPDATE feed_sources SET last_fetched_at = NOW() WHERE id = ?', [source.id]);
     } catch (err) {
       errors.push({ source: source.name, error: err.message });
+      await logActivity({
+        action: 'sync_error',
+        targetType: 'feed_source',
+        targetId: source.id,
+        details: `${source.name} — ${err.message}`,
+      });
     }
   }
 

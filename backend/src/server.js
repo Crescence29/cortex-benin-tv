@@ -25,6 +25,7 @@ import announcementsRouter from './routes/announcements.js';
 import settingsRouter from './routes/settings.js';
 import devRouter from './routes/dev.js';
 import contactRouter from './routes/contact.js';
+import logsRouter from './routes/logs.js';
 import rssRouter from './routes/rss.js';
 import sitemapRouter from './routes/sitemap.js';
 import { fetchAllFeeds } from './feeds/fetchFeeds.js';
@@ -102,6 +103,7 @@ app.use('/api/announcements', announcementsRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/admin', devRouter);
 app.use('/api/contact', contactRouter);
+app.use('/api/logs', logsRouter);
 
 registerRoutes('/api/auth', authRouter);
 registerRoutes('/api/categories', categoriesRouter);
@@ -123,6 +125,7 @@ registerRoutes('/api/announcements', announcementsRouter);
 registerRoutes('/api/settings', settingsRouter);
 registerRoutes('/api/admin', devRouter);
 registerRoutes('/api/contact', contactRouter);
+registerRoutes('/api/logs', logsRouter);
 
 app.use((err, req, res, _next) => {
   console.error(err);

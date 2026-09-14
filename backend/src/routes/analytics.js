@@ -14,11 +14,13 @@ router.get('/', requireAuth, async (_req, res) => {
      FROM videos`
   );
   const [topArticles] = await pool.query(
-    `SELECT a.id, a.view_count, COALESCE(t_fr.title, t_any.title) AS title
+    `SELECT a.id, a.view_count,
+            COALESCE(
+              t_fr.title,
+              (SELECT t2.title FROM article_translations t2 WHERE t2.article_id = a.id LIMIT 1)
+            ) AS title
      FROM articles a
      LEFT JOIN article_translations t_fr ON t_fr.article_id = a.id AND t_fr.lang_code = 'fr'
-     LEFT JOIN article_translations t_any ON t_any.article_id = a.id
-     GROUP BY a.id
      ORDER BY a.view_count DESC
      LIMIT 10`
   );

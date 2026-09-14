@@ -38,6 +38,7 @@ export const api = {
   getNewsletterCount: () => request('/newsletter/count'),
   login: (email, password) =>
     request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  logout: () => request('/auth/logout', { method: 'POST' }),
   getUsers: () => request('/users'),
   createUser: (data) => request('/users', { method: 'POST', body: JSON.stringify(data) }),
   updateUser: (id, data) => request(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
@@ -94,7 +95,14 @@ export const api = {
   deleteAnnouncement: (id) => request(`/announcements/${id}`, { method: 'DELETE' }),
   getSettings: () => request('/settings'),
   updateSettings: (data) => request('/settings', { method: 'PUT', body: JSON.stringify(data) }),
-  getActivityLogs: () => request('/admin/activity-logs'),
+  getActivityLogs: (q) => request(`/admin/activity-logs${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+  getLogsOverview: (q) => request(`/admin/logs-overview${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+  reportClientError: (payload) =>
+    fetch(`${API_URL}/logs/client-error`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).catch(() => {}),
   getSystemStatus: () => request('/admin/system-status'),
   getApiOverview: () => request('/admin/api-overview'),
   triggerBackup: () => request('/admin/backup', { method: 'POST' }),
