@@ -22,6 +22,7 @@ import {
   IconImage,
   IconRocket,
   IconSliders,
+  IconCode,
 } from '../components/Icons';
 
 function formatBytes(bytes) {
@@ -1988,25 +1989,32 @@ export default function DeveloperTab() {
 
   return (
     <AdminLayout>
-      <div className="admin-topbar">
-        <div>
-          <h1>Développeur</h1>
-          <p className="admin-topbar__subtitle">Journal d'activité et identité visuelle — accès super-admin uniquement</p>
+      <div className="dev-dashboard">
+        <div className="dev-dashboard__glow dev-dashboard__glow--1" />
+        <div className="dev-dashboard__glow dev-dashboard__glow--2" />
+
+        <div className="admin-topbar dev-dashboard__topbar">
+          <div>
+            <h1><IconCode /> Développeur</h1>
+            <p className="admin-topbar__subtitle">Journal d'activité et identité visuelle — accès super-admin uniquement</p>
+          </div>
+        </div>
+
+        <div className="dev-dashboard-grid">
+          <SystemStatusPanel />
+          <ApiOverviewPanel />
+          <DatabasePanel />
+          <MediaPanel />
+          <DeploymentPanel />
+          <ConfigPanel />
+          <MaintenanceCenterPanel />
+          <SecurityPanel />
+          <div className="dev-card--wide"><LogsPanel /></div>
+          <div className="dev-card--wide"><AdminAccessPanel /></div>
+          <div className="dev-card--wide"><ActivityLog /></div>
+          <IdentityPanel />
         </div>
       </div>
-
-      <SystemStatusPanel />
-      <ApiOverviewPanel />
-      <DatabasePanel />
-      <MediaPanel />
-      <DeploymentPanel />
-      <ConfigPanel />
-      <MaintenanceCenterPanel />
-      <SecurityPanel />
-      <LogsPanel />
-      <AdminAccessPanel />
-      <ActivityLog />
-      <IdentityPanel />
     </AdminLayout>
   );
 }

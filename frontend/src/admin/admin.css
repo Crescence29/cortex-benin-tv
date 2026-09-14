@@ -1527,3 +1527,179 @@
 .status-dot-inline.is-down {
   background: #d1274a;
 }
+
+/* ==========================================================================
+   Tableau de bord développeur — effet verre, grille de cartes, animations
+   ========================================================================== */
+
+@keyframes dev-fade-in-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes dev-glow-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(30px, -20px) scale(1.08); }
+}
+
+@keyframes dev-pulse-ring {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, #1a9f4a 55%, transparent); }
+  70% { box-shadow: 0 0 0 7px color-mix(in srgb, #1a9f4a 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, #1a9f4a 0%, transparent); }
+}
+
+@keyframes dev-title-in {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.dev-dashboard {
+  position: relative;
+  padding-bottom: 8px;
+}
+
+.dev-dashboard__glow {
+  position: absolute;
+  z-index: 0;
+  width: 380px;
+  height: 380px;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.35;
+  pointer-events: none;
+  animation: dev-glow-drift 16s ease-in-out infinite;
+}
+
+.dev-dashboard__glow--1 {
+  top: -80px;
+  left: -60px;
+  background: var(--red-bright);
+}
+
+.dev-dashboard__glow--2 {
+  top: 200px;
+  right: -100px;
+  background: #7a1620;
+  animation-delay: -8s;
+}
+
+.dev-dashboard__topbar {
+  position: relative;
+  z-index: 1;
+  animation: dev-title-in 0.5s ease both;
+}
+
+.dev-dashboard__topbar h1 {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dev-dashboard__topbar h1 svg {
+  width: 22px;
+  height: 22px;
+  color: var(--red-bright);
+}
+
+.dev-dashboard-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  align-items: start;
+  gap: 22px;
+}
+
+.dev-card--wide {
+  grid-column: 1 / -1;
+}
+
+/* Effet verre appliqué à chaque panneau du tableau de bord développeur
+   uniquement (scopé sous .dev-dashboard-grid pour ne pas affecter les
+   autres pages admin qui réutilisent .admin-panel). */
+/* Pas de backdrop-filter ici par choix de performance : le flou
+   d'arrière-plan est coûteux, et ce tableau de bord empile une douzaine de
+   cartes sur une page qui défile — l'effet verre repose donc sur la
+   transparence en dégradé + la bordure lumineuse + l'ombre. */
+.dev-dashboard-grid .admin-panel,
+.dev-card--wide .admin-panel {
+  margin-bottom: 0;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--surface) 92%, transparent), color-mix(in srgb, var(--surface) 78%, transparent));
+  border: 1px solid color-mix(in srgb, var(--red) 20%, var(--border));
+  border-radius: 16px;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: transform 0.28s cubic-bezier(.2,.8,.2,1), box-shadow 0.28s ease, border-color 0.28s ease;
+  animation: dev-fade-in-up 0.5s cubic-bezier(.2,.8,.2,1) both;
+}
+
+.dev-dashboard-grid > *:nth-child(1) .admin-panel { animation-delay: 0.02s; }
+.dev-dashboard-grid > *:nth-child(2) .admin-panel { animation-delay: 0.06s; }
+.dev-dashboard-grid > *:nth-child(3) .admin-panel { animation-delay: 0.10s; }
+.dev-dashboard-grid > *:nth-child(4) .admin-panel { animation-delay: 0.14s; }
+.dev-dashboard-grid > *:nth-child(5) .admin-panel { animation-delay: 0.18s; }
+.dev-dashboard-grid > *:nth-child(6) .admin-panel { animation-delay: 0.22s; }
+.dev-dashboard-grid > *:nth-child(7) .admin-panel { animation-delay: 0.26s; }
+.dev-dashboard-grid > *:nth-child(8) .admin-panel { animation-delay: 0.30s; }
+.dev-dashboard-grid > *:nth-child(9) .admin-panel { animation-delay: 0.34s; }
+.dev-dashboard-grid > *:nth-child(10) .admin-panel { animation-delay: 0.38s; }
+.dev-dashboard-grid > *:nth-child(11) .admin-panel { animation-delay: 0.42s; }
+.dev-dashboard-grid > *:nth-child(12) .admin-panel { animation-delay: 0.46s; }
+
+.dev-dashboard-grid .admin-panel:hover,
+.dev-card--wide .admin-panel:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.38), 0 0 0 1px color-mix(in srgb, var(--red-bright) 40%, transparent);
+  border-color: color-mix(in srgb, var(--red-bright) 55%, var(--border));
+}
+
+.dev-dashboard-grid .admin-panel__header {
+  border-bottom: 1px solid color-mix(in srgb, var(--red) 16%, var(--border));
+}
+
+.dev-dashboard-grid .admin-panel__header h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dev-dashboard-grid .admin-panel__header h2 svg {
+  color: var(--red-bright);
+}
+
+/* Contenu détaillé qui apparaît au clic d'une ligne : petite entrée en fondu
+   plutôt qu'un simple pop-in brut. */
+.dev-dashboard-grid .system-status-detail {
+  animation: dev-fade-in-up 0.22s ease both;
+}
+
+.dev-dashboard-grid .system-status-row--clickable:hover {
+  background: color-mix(in srgb, var(--red-bright) 8%, var(--surface));
+}
+
+/* Petit halo pulsé sur les indicateurs "opérationnel" pour donner une
+   sensation de tableau de bord vivant, pas figé. */
+.dev-dashboard-grid .status-dot-inline.is-ok {
+  animation: dev-pulse-ring 2.4s ease-out infinite;
+}
+
+.dev-dashboard-grid .btn--sm:hover {
+  transform: translateY(-1px);
+}
+
+.dev-dashboard-grid .btn--sm {
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dev-dashboard__glow,
+  .dev-dashboard__topbar,
+  .dev-dashboard-grid .admin-panel,
+  .dev-dashboard-grid .system-status-detail,
+  .dev-dashboard-grid .status-dot-inline.is-ok {
+    animation: none;
+  }
+  .dev-dashboard-grid .admin-panel,
+  .dev-dashboard-grid .btn--sm {
+    transition: none;
+  }
+}
