@@ -590,6 +590,42 @@ router.get('/deployment-overview', requireAuth, requireDeveloper, async (_req, r
   });
 });
 
+// Configuration technique : paramètres réels (URL, version, environnement,
+// fuseau horaire, réglages modifiables stockés en base) et statut — jamais la
+// valeur — des variables d'environnement sensibles. DB_PASSWORD, JWT_SECRET et
+// CRON_SECRET ne sont JAMAIS renvoyés, même partiellement : seul un booléen
+// "défini/non défini" est exposé.
+const SENSITIVE_ENV_KEYS = ['DB_PASSWORD', 'JWT_SECRET', 'CRON_SECRET'];
+const VISIBLE_ENV_KEYS = ['PORT', 'DB_HOST', 'DB_PORT', 'DB_USER', 'DB_NAME', 'CORS_ORIGIN', 'SITE_URL', 'NODE_ENV'];
+
+router.get('/config-overview', requireAuth, requireDeveloper, async (req, res) => {
+  const [[row]] = await pool.query("SELECT data FROM site_settings WHERE id = 'main'");
+  const settings = row?.data || {};
+
+  const envVars = [
+    ...VISIBLE_ENV_KEYS.map((key) => ({ key, sensitive: false, value: process.env[key] ?? null, isSet: process.env[key] !== undefined })),
+    ...SENSITIVE_ENV_KEYS.map((key) => ({ key, sensitive: true, value: null, isSet: !!process.env[key] })),
+  ];
+
+  res.json({
+    appName: 'Cortex Bénin TV',
+    mainUrl: process.env.CORS_ORIGIN || null,
+    apiUrl: `${req.protocol}://${req.get('host')}`,
+    apiVersion: process.env.npm_package_version || '1.0.0',
+    environment: process.env.NODE_ENV || 'development',
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    serverTime: new Date().toISOString(),
+    settings: {
+      maintenance_mode: !!settings.maintenance_mode,
+      maintenance_message: settings.maintenance_message || '',
+      default_language: settings.default_language || 'fr',
+      system_email: settings.system_email || '',
+    },
+    envVars,
+    storageNote: "Aucun système d'upload de fichiers n'existe sur ce site : pas de stockage ni de CDN à configurer (voir le panneau \"Fichiers et médias\").",
+  });
+});
+
 // Sauvegarde manuelle : exporte le contenu réel de chaque table en JSON et
 // l'envoie en téléchargement, tout en enregistrant la date pour l'afficher
 // ensuite comme "Dernière sauvegarde" sur le dashboard.

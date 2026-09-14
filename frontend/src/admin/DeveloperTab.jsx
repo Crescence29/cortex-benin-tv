@@ -1272,6 +1272,165 @@ function DeploymentPanel() {
   );
 }
 
+function EnvVarsList({ envVars }) {
+  return (
+    <ul className="detail-list">
+      {envVars.map((v) => (
+        <li key={v.key}>
+          <code>{v.key}</code>
+          {v.sensitive ? (
+            <span>{v.isSet ? '•••••••• (défini)' : 'Non défini'}</span>
+          ) : (
+            <span>{v.isSet ? v.value : 'Non défini'}</span>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ConfigPanel() {
+  const [config, setConfig] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [openKey, setOpenKey] = useState(null);
+  const [form, setForm] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState(null);
+
+  function load() {
+    api.getConfigOverview().then((data) => {
+      setConfig(data);
+      setForm(data.settings);
+    }).finally(() => setLoading(false));
+  }
+
+  useEffect(load, []);
+
+  async function onSave() {
+    setSaving(true);
+    setSaved(false);
+    setError(null);
+    try {
+      const res = await api.updateSettings(form);
+      setLogoState(res.settings);
+      setSaved(true);
+      load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading && !config) {
+    return (
+      <div className="admin-panel">
+        <div className="admin-panel__header"><h2><IconSettings /> Configuration</h2></div>
+        <div className="admin-empty">Chargement…</div>
+      </div>
+    );
+  }
+  if (!config || !form) return null;
+
+  return (
+    <div className="admin-panel">
+      <div className="admin-panel__header">
+        <h2><IconSettings /> Configuration</h2>
+        <button type="button" className="btn btn--sm btn--outline" onClick={load}>
+          <IconRefresh /> Actualiser
+        </button>
+      </div>
+
+      <div className="system-status-grid">
+        <DetailRow label="Nom de l'application" detailKey="cfg-name" openKey={openKey} setOpenKey={setOpenKey} value={config.appName}>
+          <p className="admin-empty" style={{ padding: '10px 20px' }}>Nom d'affichage fixe de l'application.</p>
+        </DetailRow>
+        <DetailRow label="URL principale (site public)" detailKey="cfg-main-url" openKey={openKey} setOpenKey={setOpenKey} value={config.mainUrl || 'non configurée'}>
+          <p className="admin-empty" style={{ padding: '10px 20px' }}>Valeur de la variable d'environnement <code>CORS_ORIGIN</code> du backend.</p>
+        </DetailRow>
+        <DetailRow label="URL de l'API" detailKey="cfg-api-url" openKey={openKey} setOpenKey={setOpenKey} value={config.apiUrl}>
+          <p className="admin-empty" style={{ padding: '10px 20px' }}>Déduite en direct de la requête reçue par ce serveur — toujours exacte, quel que soit l'hébergeur.</p>
+        </DetailRow>
+        <DetailRow label="Version de l'API" detailKey="cfg-api-version" openKey={openKey} setOpenKey={setOpenKey} value={`v${config.apiVersion}`}>
+          <p className="admin-empty" style={{ padding: '10px 20px' }}>Définie dans <code>package.json</code> du backend.</p>
+        </DetailRow>
+        <DetailRow label="Environnement" detailKey="cfg-env" openKey={openKey} setOpenKey={setOpenKey} value={config.environment}>
+          <p className="admin-empty" style={{ padding: '10px 20px' }}>Valeur de <code>NODE_ENV</code>. Un seul environnement existe (voir "Déploiement et versions").</p>
+        </DetailRow>
+        <DetailRow label="Fuseau horaire du serveur" detailKey="cfg-tz" openKey={openKey} setOpenKey={setOpenKey} value={config.timezone}>
+          <p className="admin-empty" style={{ padding: '10px 20px' }}>Heure serveur actuelle : {new Date(config.serverTime).toLocaleString('fr-FR')}</p>
+        </DetailRow>
+
+        <DetailRow
+          label="Mode maintenance" detailKey="cfg-maintenance" openKey={openKey} setOpenKey={setOpenKey}
+          statusOk={!form.maintenance_mode}
+          value={form.maintenance_mode ? 'Activé — le site public est bloqué' : 'Désactivé'}
+        >
+          <div style={{ padding: '10px 20px', display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input
+                type="checkbox"
+                checked={!!form.maintenance_mode}
+                onChange={(e) => setForm({ ...form, maintenance_mode: e.target.checked })}
+              />
+              Activer le mode maintenance (bloque le site public, pas l'admin)
+            </label>
+            <input
+              style={{ width: '100%', maxWidth: 420 }}
+              placeholder="Message affiché aux visiteurs pendant la maintenance"
+              value={form.maintenance_message}
+              onChange={(e) => setForm({ ...form, maintenance_message: e.target.value })}
+            />
+          </div>
+        </DetailRow>
+
+        <DetailRow label="Langue par défaut" detailKey="cfg-lang" openKey={openKey} setOpenKey={setOpenKey} value={form.default_language}>
+          <div style={{ padding: '10px 20px' }}>
+            <input
+              style={{ width: 120 }}
+              value={form.default_language}
+              onChange={(e) => setForm({ ...form, default_language: e.target.value })}
+              maxLength={5}
+            />
+          </div>
+        </DetailRow>
+
+        <DetailRow label="Email système" detailKey="cfg-email" openKey={openKey} setOpenKey={setOpenKey} value={form.system_email || 'non configuré'}>
+          <div style={{ padding: '10px 20px' }}>
+            <input
+              style={{ width: '100%', maxWidth: 320 }}
+              type="email"
+              placeholder="contact@cortexbenintv.bj"
+              value={form.system_email}
+              onChange={(e) => setForm({ ...form, system_email: e.target.value })}
+            />
+            <p className="admin-empty" style={{ padding: '8px 0 0', textAlign: 'left' }}>
+              Informatif pour l'instant : aucun service d'envoi d'email (SMTP) n'est configuré sur ce site.
+            </p>
+          </div>
+        </DetailRow>
+
+        <DetailRow label="Stockage / CDN" detailKey="cfg-storage" openKey={openKey} setOpenKey={setOpenKey} value="Non applicable">
+          <p className="admin-empty" style={{ padding: '10px 20px' }}>{config.storageNote}</p>
+        </DetailRow>
+
+        <DetailRow label="Variables d'environnement" detailKey="cfg-env-vars" openKey={openKey} setOpenKey={setOpenKey} value={`${config.envVars.length} suivies`}>
+          <EnvVarsList envVars={config.envVars} />
+        </DetailRow>
+      </div>
+
+      <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border)' }}>
+        {error && <p className="admin-form__error">{error}</p>}
+        {saved && <p className="admin-form__success">Configuration enregistrée.</p>}
+        <button type="button" className="btn btn--sm" onClick={onSave} disabled={saving}>
+          {saving ? 'Enregistrement…' : 'Enregistrer la configuration'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function LogsPanel() {
   const [data, setData] = useState(null);
   const [query, setQuery] = useState('');
@@ -1458,6 +1617,7 @@ export default function DeveloperTab() {
       <DatabasePanel />
       <MediaPanel />
       <DeploymentPanel />
+      <ConfigPanel />
       <LogsPanel />
       <AdminAccessPanel />
       <ActivityLog />

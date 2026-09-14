@@ -1,5 +1,8 @@
+import { useEffect, useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Header from './components/Header';
+import Maintenance from './pages/Maintenance';
+import { ensureLogoLoaded, getLogoState } from './logoStore';
 import Footer from './components/Footer';
 import NewsTicker from './components/NewsTicker';
 import Home from './pages/Home';
@@ -46,6 +49,24 @@ function Protected({ children }) {
   return <ProtectedRoute>{children}</ProtectedRoute>;
 }
 
+// Le mode maintenance ne bloque que le site public : l'espace admin reste
+// accessible pour qu'un développeur puisse toujours se connecter et le désactiver.
+function PublicSite({ children }) {
+  const [checked, setChecked] = useState(false);
+  const [maintenance, setMaintenance] = useState(false);
+
+  useEffect(() => {
+    ensureLogoLoaded().then(() => {
+      setMaintenance(!!getLogoState().maintenance_mode);
+      setChecked(true);
+    });
+  }, []);
+
+  if (!checked) return null;
+  if (maintenance) return <Maintenance message={getLogoState().maintenance_message} />;
+  return children;
+}
+
 export default function App() {
   return (
     <AuthProvider>
@@ -73,7 +94,7 @@ export default function App() {
         <Route
           path="*"
           element={
-            <>
+            <PublicSite>
               <Header />
               <main>
                 <Routes>
@@ -98,7 +119,7 @@ export default function App() {
               </main>
               <Footer />
               <NewsTicker />
-            </>
+            </PublicSite>
           }
         />
       </Routes>
