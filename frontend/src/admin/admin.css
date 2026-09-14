@@ -1601,17 +1601,27 @@
   color: var(--red-bright);
 }
 
+/* Disposition "masonry" via colonnes CSS plutôt qu'une vraie grille : avec
+   une grille classique, des cartes de hauteurs très différentes (ex: "État
+   technique" avec 13 lignes à côté de "Gestion de l'API" bien plus courte)
+   forcent la ligne suivante à démarrer au niveau de la carte la PLUS haute,
+   ce qui laisse de grands vides mal alignés sous les cartes courtes — un
+   rendu perçu comme désordonné. Les colonnes CSS laissent chaque carte
+   s'empiler dans la colonne la plus courte, sans trou. */
 .dev-dashboard-grid {
   position: relative;
   z-index: 1;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-  align-items: start;
-  gap: 22px;
+  columns: 2 420px;
+  column-gap: 22px;
+}
+
+.dev-dashboard-grid > * {
+  break-inside: avoid;
+  margin-bottom: 22px;
 }
 
 .dev-card--wide {
-  grid-column: 1 / -1;
+  column-span: all;
 }
 
 /* Effet verre appliqué à chaque panneau du tableau de bord développeur
