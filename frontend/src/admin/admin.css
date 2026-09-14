@@ -959,9 +959,22 @@
    strip the visual style off any .btn placed inside a row-actions cell —
    restore it explicitly, with a selector specific enough to win. */
 .row-actions--wrap {
-  flex-wrap: wrap;
-  justify-content: flex-start;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
   gap: 8px;
+  justify-items: stretch;
+  max-width: 620px;
+  margin-left: auto;
+}
+
+.row-actions--wrap > .btn {
+  width: 100%;
+  justify-content: center;
+  text-align: center;
+}
+
+.row-actions--wrap > form.dev-access-confirm {
+  grid-column: 1 / -1;
 }
 
 .row-actions .btn {
