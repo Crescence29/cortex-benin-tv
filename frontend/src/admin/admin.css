@@ -1617,7 +1617,6 @@
 
 .dev-dashboard-grid > * {
   break-inside: avoid;
-  margin-bottom: 22px;
 }
 
 .dev-card--wide {
@@ -1633,7 +1632,10 @@
    transparence en dégradé + la bordure lumineuse + l'ombre. */
 .dev-dashboard-grid .admin-panel,
 .dev-card--wide .admin-panel {
-  margin-bottom: 0;
+  /* L'espacement vertical entre cartes empilées dans une même colonne se
+     fait ici (pas sur le wrapper) : column-gap ne gère que l'espace
+     horizontal entre colonnes, pas l'espace entre éléments empilés. */
+  margin-bottom: 22px;
   background: linear-gradient(160deg, color-mix(in srgb, var(--surface) 92%, transparent), color-mix(in srgb, var(--surface) 78%, transparent));
   border: 1px solid color-mix(in srgb, var(--red) 20%, var(--border));
   border-radius: 16px;
