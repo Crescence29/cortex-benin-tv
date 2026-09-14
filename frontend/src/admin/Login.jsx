@@ -46,7 +46,9 @@ export default function Login() {
           <label htmlFor="login-email">{t('email')}</label>
           <input
             id="login-email"
+            name="email"
             type="email"
+            autoComplete="username"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="vous@cortexbenintv.bj"
@@ -59,7 +61,9 @@ export default function Login() {
           <label htmlFor="login-password">{t('mot_de_passe')}</label>
           <input
             id="login-password"
+            name="password"
             type="password"
+            autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
