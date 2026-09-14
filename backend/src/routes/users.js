@@ -162,25 +162,27 @@ router.post('/', requireAuth, requireMinRole('admin'), async (req, res) => {
 });
 
 router.put('/:id', requireAuth, async (req, res) => {
-  const { name, role, password, is_active } = req.body;
+  const { name, email, role, password, is_active } = req.body;
   const existing = await getTargetUser(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Utilisateur introuvable' });
 
   const isSelf = existing.id === req.user.id;
   const managingTarget = canManage(req.user.role, existing.role);
 
-  // Modifier le nom ou son propre mot de passe reste toujours possible pour
-  // soi-même ; le reste (rôle, activation, mot de passe d'un tiers) exige un
-  // rang strictement supérieur à la cible. Le flag développeur ne passe pas
-  // par ici : voir /developer-access/start et /confirm (confirmation par code).
+  // Modifier le nom, l'email ou son propre mot de passe reste toujours
+  // possible pour soi-même ; le reste (rôle, activation, mot de passe d'un
+  // tiers) exige un rang strictement supérieur à la cible. Le flag
+  // développeur ne passe pas par ici : voir /developer-access/start et
+  // /confirm (confirmation par code).
   const wantsRoleChange = role && role !== existing.role;
   const wantsActiveChange = is_active !== undefined && !!is_active !== !!existing.is_active;
+  const wantsEmailChange = email && email !== existing.email;
   const wantsPasswordChangeForOther = password && !isSelf;
 
   if (wantsActiveChange && is_active === false && isSelf) {
     return res.status(400).json({ error: 'Vous ne pouvez pas désactiver votre propre compte' });
   }
-  if ((wantsRoleChange || wantsPasswordChangeForOther || (wantsActiveChange && !isSelf)) && !managingTarget) {
+  if ((wantsRoleChange || wantsPasswordChangeForOther || (wantsActiveChange && !isSelf) || (wantsEmailChange && !isSelf)) && !managingTarget) {
     return res.status(403).json({ error: 'Droits insuffisants pour modifier ce compte' });
   }
   if (wantsRoleChange && !canManage(req.user.role, role)) {
@@ -190,18 +192,32 @@ router.put('/:id', requireAuth, async (req, res) => {
   const nextRole = wantsRoleChange ? role : existing.role;
   const nextActive = wantsActiveChange ? !!is_active : existing.is_active;
   const nextName = name ?? existing.name;
+  const nextEmail = wantsEmailChange ? email : existing.email;
 
-  if (password) {
-    const hash = await bcrypt.hash(password, 10);
-    await pool.query(
-      'UPDATE users SET name=?, role=?, is_active=?, password_hash=? WHERE id=?',
-      [nextName, nextRole, nextActive, hash, req.params.id]
-    );
-  } else {
-    await pool.query(
-      'UPDATE users SET name=?, role=?, is_active=? WHERE id=?',
-      [nextName, nextRole, nextActive, req.params.id]
-    );
+  try {
+    if (password) {
+      const hash = await bcrypt.hash(password, 10);
+      await pool.query(
+        'UPDATE users SET name=?, email=?, role=?, is_active=?, password_hash=? WHERE id=?',
+        [nextName, nextEmail, nextRole, nextActive, hash, req.params.id]
+      );
+    } else {
+      await pool.query(
+        'UPDATE users SET name=?, email=?, role=?, is_active=? WHERE id=?',
+        [nextName, nextEmail, nextRole, nextActive, req.params.id]
+      );
+    }
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'Cet email est déjà utilisé' });
+    throw err;
+  }
+
+  if (wantsEmailChange) {
+    await logActivity({
+      actorId: req.user.id, actorName: req.user.name, actorRole: req.user.role,
+      action: 'email_changed', targetType: 'user', targetId: req.params.id,
+      details: `${existing.name} : ${existing.email} → ${email}`, ip: clientIp(req),
+    });
   }
 
   if (wantsRoleChange) {

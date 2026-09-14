@@ -466,7 +466,7 @@ function ApiOverviewPanel() {
   );
 }
 
-const SENSITIVE_ACTIONS = new Set(['login_failed', 'role_changed', 'user_deleted', 'password_reset', 'developer_access_granted', 'developer_access_revoked']);
+const SENSITIVE_ACTIONS = new Set(['login_failed', 'role_changed', 'email_changed', 'user_deleted', 'password_reset', 'developer_access_granted', 'developer_access_revoked']);
 
 const ACTION_META = {
   login_success: { label: 'Connexion réussie', icon: IconLogIn },
@@ -474,6 +474,7 @@ const ACTION_META = {
   logout: { label: 'Déconnexion', icon: IconLogIn },
   user_created: { label: 'Compte créé', icon: IconUserPlus },
   role_changed: { label: 'Rôle modifié', icon: IconShield },
+  email_changed: { label: 'Email modifié', icon: IconLock },
   user_deleted: { label: 'Compte supprimé', icon: IconTrash },
   user_deactivated: { label: 'Compte désactivé', icon: IconLock },
   user_reactivated: { label: 'Compte réactivé', icon: IconRefresh },
