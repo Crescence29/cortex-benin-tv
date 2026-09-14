@@ -6,6 +6,7 @@ import { pool } from '../db/pool.js';
 import { requireAuth } from '../middleware/auth.js';
 import { logActivity, clientIp } from '../lib/logActivity.js';
 import { ROLE_RANK, canManage, requireMinRole } from '../lib/roles.js';
+import { startPending, checkPending, CONFIRM_TTL_MS } from '../lib/pendingConfirmations.js';
 
 const router = Router();
 
@@ -14,39 +15,8 @@ async function getTargetUser(id) {
   return row;
 }
 
-// Confirmations par code à 6 chiffres pour les actions sensibles et
-// difficiles à annuler (accès développeur, bannissement/débannissement).
-// Volontairement en mémoire (pas en base) : c'est une friction anti-clic-
-// accidentel de courte durée, pas un vrai secret à protéger sur le long terme.
 const pendingDeveloperAccess = new Map();
 const pendingBanActions = new Map();
-const CONFIRM_TTL_MS = 5 * 60 * 1000;
-
-function cleanupPending(map) {
-  const now = Date.now();
-  for (const [id, entry] of map) {
-    if (entry.expiresAt < now) map.delete(id);
-  }
-}
-
-function startPending(map, id, payload) {
-  cleanupPending(map);
-  const code = crypto.randomInt(100000, 1000000).toString();
-  map.set(id, { ...payload, code, expiresAt: Date.now() + CONFIRM_TTL_MS });
-  return code;
-}
-
-function checkPending(map, id, code, actorId) {
-  const pending = map.get(id);
-  if (!pending || pending.actorId !== actorId || pending.expiresAt < Date.now()) {
-    return { ok: false, error: 'Code expiré ou demande introuvable, recommencez' };
-  }
-  if (pending.code !== String(code || '')) {
-    return { ok: false, error: 'Code incorrect' };
-  }
-  map.delete(id);
-  return { ok: true, pending };
-}
 
 router.get('/', requireAuth, async (req, res) => {
   const [rows] = await pool.query(

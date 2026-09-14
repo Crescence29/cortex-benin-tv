@@ -8,8 +8,30 @@ import { logActivity, clientIp } from '../lib/logActivity.js';
 import { getMetrics } from '../lib/systemMetrics.js';
 import { getRoutes } from '../lib/apiRegistry.js';
 import { RATE_LIMITS } from '../middleware/rateLimit.js';
+import { startPending, checkPending, CONFIRM_TTL_MS } from '../lib/pendingConfirmations.js';
 
 const router = Router();
+
+const pendingRestore = new Map();
+// Tables volontairement exclues de la restauration : la sauvegarde ne
+// contient pas les mots de passe (retirés à l'export pour ne jamais les
+// exposer), et les sessions restaurées seraient de toute façon invalides.
+// Restaurer ces tables casserait donc l'authentification de tout le monde.
+const RESTORE_EXCLUDED_TABLES = new Set(['users', 'sessions']);
+const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
+
+// La sauvegarde vient d'un export JSON : les dates y sont des chaînes ISO
+// ("...T...Z"), que MySQL refuse telles quelles pour une colonne DATETIME.
+// On les repasse en objets Date pour que le driver les reformate correctement.
+function normalizeValueForInsert(value) {
+  if (typeof value === 'string' && ISO_DATETIME.test(value)) return new Date(value);
+  // Une colonne JSON revient de la sauvegarde comme un objet JS imbriqué
+  // (mysql2 la désérialise automatiquement à la lecture) ; il faut la
+  // resérialiser en texte JSON pour l'insertion, sinon MySQL reçoit
+  // littéralement la chaîne "[object Object]".
+  if (value !== null && typeof value === 'object') return JSON.stringify(value);
+  return value;
+}
 
 // Historique complet conservé en base ; on ne renvoie que les 500 entrées les plus
 // récentes, avec une recherche optionnelle (?q=) sur l'acteur, l'action et le détail.
@@ -256,6 +278,149 @@ router.get('/api-overview', requireAuth, requireDeveloper, async (_req, res) => 
     ],
     note: "Cette API est interne : elle n'est consommée que par le site Cortex Bénin TV lui-même. Il n'existe donc pas de clés API, de tokens d'accès tiers ni de webhooks sortants à gérer.",
   });
+});
+
+// Vue d'ensemble de la base de données : état, taille réelle, connexions
+// actives et requêtes lentes lues directement depuis les statistiques MySQL
+// (SHOW STATUS / SHOW VARIABLES), migrations connues (fichiers réellement
+// présents dans database/), et date de dernière sauvegarde.
+router.get('/database-overview', requireAuth, requireDeveloper, async (_req, res) => {
+  const dbStart = Date.now();
+  let status = 'error';
+  try {
+    await pool.query('SELECT 1');
+    status = 'ok';
+  } catch {
+    status = 'error';
+  }
+  const latencyMs = Date.now() - dbStart;
+
+  const [[dbNameRow]] = await pool.query('SELECT DATABASE() AS name');
+  const [tableSizes] = await pool.query(
+    `SELECT table_name AS \`table\`, table_rows AS \`rows\`,
+            (data_length + index_length) AS sizeBytes
+     FROM information_schema.tables
+     WHERE table_schema = DATABASE()
+     ORDER BY sizeBytes DESC`
+  );
+  const totalSizeBytes = tableSizes.reduce((sum, t) => sum + Number(t.sizeBytes || 0), 0);
+  const totalRowsApprox = tableSizes.reduce((sum, t) => sum + Number(t.rows || 0), 0);
+
+  const [[threadsRow]] = await pool.query("SHOW STATUS LIKE 'Threads_connected'");
+  const [[maxConnRow]] = await pool.query("SHOW VARIABLES LIKE 'max_connections'");
+  const [[slowQueriesRow]] = await pool.query("SHOW STATUS LIKE 'Slow_queries'");
+  const [[longQueryTimeRow]] = await pool.query("SHOW VARIABLES LIKE 'long_query_time'");
+  const [[abortedConnectsRow]] = await pool.query("SHOW STATUS LIKE 'Aborted_connects'");
+  const [[uptimeRow]] = await pool.query("SHOW STATUS LIKE 'Uptime'");
+
+  const [[lastBackup]] = await pool.query("SELECT value FROM system_meta WHERE `key` = 'last_backup_at'");
+
+  let migrationFiles = [];
+  try {
+    const dir = new URL('../../../database', import.meta.url);
+    migrationFiles = fs.readdirSync(dir).filter((f) => f.startsWith('migration_') && f.endsWith('.sql')).sort();
+  } catch {
+    migrationFiles = [];
+  }
+
+  res.json({
+    status,
+    latencyMs,
+    databaseName: dbNameRow.name,
+    tableCount: tableSizes.length,
+    totalSizeBytes,
+    totalRowsApprox,
+    tableSizes,
+    activeConnections: Number(threadsRow?.Value ?? 0),
+    maxConnections: Number(maxConnRow?.Value ?? 0),
+    slowQueries: Number(slowQueriesRow?.Value ?? 0),
+    longQueryTimeSeconds: Number(longQueryTimeRow?.Value ?? 0),
+    abortedConnects: Number(abortedConnectsRow?.Value ?? 0),
+    serverUptimeSeconds: Number(uptimeRow?.Value ?? 0),
+    lastBackupAt: lastBackup?.value || null,
+    migrations: migrationFiles.map((f) => ({
+      file: f,
+      // Pas de table de suivi des migrations dans ce projet : on liste
+      // honnêtement les fichiers présents dans le dépôt, sans prétendre
+      // savoir lesquels ont déjà été appliqués en production.
+      note: 'Présent dans le dépôt — application déjà faite manuellement, non suivie automatiquement',
+    })),
+    checkedAt: new Date().toISOString(),
+  });
+});
+
+// Vérification d'intégrité réelle : CHECK TABLE sur chaque table, opération
+// en lecture seule fournie nativement par MySQL — ne modifie rien.
+router.post('/database-overview/integrity-check', requireAuth, requireDeveloper, async (_req, res) => {
+  const [tables] = await pool.query('SHOW TABLES');
+  const tableNames = tables.map((t) => Object.values(t)[0]);
+  const results = [];
+  for (const name of tableNames) {
+    const [[check]] = await pool.query(`CHECK TABLE \`${name}\``);
+    results.push({ table: name, status: check.Msg_text });
+  }
+  res.json({ results, checkedAt: new Date().toISOString() });
+});
+
+// Restauration depuis une sauvegarde JSON précédemment téléchargée.
+// Volontairement lourd : réservé aux comptes développeur, confirmation par
+// code, transaction tout-ou-rien, et exclusion explicite de "users" et
+// "sessions" (la sauvegarde ne contient pas les mots de passe — les
+// restaurer casserait l'authentification de tous les comptes).
+router.post('/database-overview/restore/start', requireAuth, requireDeveloper, async (req, res) => {
+  const dump = req.body?.backup;
+  if (!dump || typeof dump !== 'object' || Array.isArray(dump)) {
+    return res.status(400).json({ error: 'Fichier de sauvegarde invalide — attendu : { nomDeTable: [lignes...] }' });
+  }
+  const tables = Object.keys(dump).filter((t) => !RESTORE_EXCLUDED_TABLES.has(t));
+  const code = startPending(pendingRestore, req.user.id, { dump, actorId: req.user.id });
+  res.json({ code, tables, expiresInSeconds: CONFIRM_TTL_MS / 1000 });
+});
+
+router.post('/database-overview/restore/confirm', requireAuth, requireDeveloper, async (req, res) => {
+  const check = checkPending(pendingRestore, req.user.id, req.body.code, req.user.id);
+  if (!check.ok) return res.status(400).json({ error: check.error });
+
+  const { dump } = check.pending;
+  const tableNames = Object.keys(dump).filter((t) => !RESTORE_EXCLUDED_TABLES.has(t));
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.query('SET FOREIGN_KEY_CHECKS = 0');
+    await conn.beginTransaction();
+    for (const table of tableNames) {
+      const rows = dump[table];
+      if (!Array.isArray(rows)) continue;
+      await conn.query(`DELETE FROM \`${table}\``);
+      for (const row of rows) {
+        const columns = Object.keys(row);
+        if (columns.length === 0) continue;
+        const placeholders = columns.map(() => '?').join(',');
+        await conn.query(
+          `INSERT INTO \`${table}\` (${columns.map((c) => `\`${c}\``).join(',')}) VALUES (${placeholders})`,
+          columns.map((c) => normalizeValueForInsert(row[c]))
+        );
+      }
+    }
+    await conn.commit();
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    await conn.query('SET FOREIGN_KEY_CHECKS = 1');
+    conn.release();
+  }
+
+  await logActivity({
+    actorId: req.user.id,
+    actorName: req.user.name,
+    actorRole: req.user.role,
+    action: 'database_restored',
+    details: `${tableNames.length} table(s) restaurée(s) depuis une sauvegarde importée par ${req.user.name} (users/sessions exclus)`,
+    ip: clientIp(req),
+  });
+
+  res.json({ ok: true, tablesRestored: tableNames.length });
 });
 
 // Sauvegarde manuelle : exporte le contenu réel de chaque table en JSON et

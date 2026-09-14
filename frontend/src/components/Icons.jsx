@@ -57,6 +57,8 @@ import {
   RefreshCw,
   ChevronDown,
   Ban,
+  Database,
+  Upload,
 } from 'lucide-react';
 
 // Thin wrapper so every icon keeps the old default size ('1em', matching the
@@ -127,6 +129,8 @@ export const IconUserPlus = wrap(UserPlus);
 export const IconRefresh = wrap(RefreshCw);
 export const IconChevronDown = wrap(ChevronDown);
 export const IconBan = wrap(Ban);
+export const IconDatabase = wrap(Database);
+export const IconUpload = wrap(Upload);
 
 // Brand marks: Lucide dropped social-network logos, so these stay as the
 // real, trademark-accurate brand SVGs (a generic icon would be less "real",

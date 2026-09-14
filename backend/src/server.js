@@ -59,7 +59,10 @@ app.use(
     },
   })
 );
-app.use(express.json({ limit: '2mb' }));
+// Relevé à 15mb pour permettre de ré-uploader une sauvegarde complète de la
+// base (restauration développeur) ; les routes publiques sensibles restent
+// protégées par leurs propres limites de requêtes (voir middleware/rateLimit.js).
+app.use(express.json({ limit: '15mb' }));
 
 app.use((req, res, next) => {
   const start = Date.now();

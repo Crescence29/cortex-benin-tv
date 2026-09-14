@@ -17,6 +17,8 @@ import {
   IconLock,
   IconLink,
   IconBan,
+  IconDatabase,
+  IconUpload,
 } from '../components/Icons';
 
 function formatBytes(bytes) {
@@ -468,7 +470,7 @@ function ApiOverviewPanel() {
   );
 }
 
-const SENSITIVE_ACTIONS = new Set(['login_failed', 'role_changed', 'email_changed', 'user_deleted', 'password_reset', 'developer_access_granted', 'developer_access_revoked', 'user_banned', 'user_unbanned', 'impersonation_started']);
+const SENSITIVE_ACTIONS = new Set(['login_failed', 'role_changed', 'email_changed', 'user_deleted', 'password_reset', 'developer_access_granted', 'developer_access_revoked', 'user_banned', 'user_unbanned', 'impersonation_started', 'database_restored']);
 
 const ACTION_META = {
   login_success: { label: 'Connexion réussie', icon: IconLogIn },
@@ -484,6 +486,7 @@ const ACTION_META = {
   user_banned: { label: 'Compte banni', icon: IconBan },
   user_unbanned: { label: 'Compte débanni', icon: IconRefresh },
   impersonation_started: { label: 'Connexion en tant qu\'un autre compte', icon: IconUserPlus },
+  database_restored: { label: 'Base de données restaurée', icon: IconDatabase },
   password_reset: { label: 'Mot de passe réinitialisé', icon: IconLock },
   developer_access_granted: { label: 'Accès développeur accordé', icon: IconShield },
   developer_access_revoked: { label: 'Accès développeur retiré', icon: IconShield },
@@ -739,6 +742,318 @@ function ActivityLog() {
   );
 }
 
+function IntegrityResults({ results }) {
+  if (!results) return null;
+  if (results.length === 0) return <p className="admin-empty">Aucune table à vérifier.</p>;
+  return (
+    <ul className="detail-list">
+      {results.map((r) => (
+        <li key={r.table}>
+          <code>{r.table}</code>
+          <span style={{ color: r.status === 'OK' ? '#1a7f37' : '#d1274a' }}>{r.status}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function RestorePanel({ onDone }) {
+  const [file, setFile] = useState(null);
+  const [parsed, setParsed] = useState(null);
+  const [pending, setPending] = useState(null); // { code, tables }
+  const [input, setInput] = useState('');
+  const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState(null);
+
+  function onFileChange(e) {
+    const f = e.target.files?.[0];
+    setError(null);
+    setParsed(null);
+    setPending(null);
+    setResult(null);
+    if (!f) return;
+    setFile(f);
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const json = JSON.parse(reader.result);
+        if (typeof json !== 'object' || json === null || Array.isArray(json)) {
+          throw new Error('Un fichier de sauvegarde doit être un objet { nomDeTable: [lignes...] }');
+        }
+        setParsed(json);
+      } catch (err) {
+        setError(`Fichier illisible : ${err.message}`);
+      }
+    };
+    reader.readAsText(f);
+  }
+
+  async function onStart() {
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await api.startDatabaseRestore(parsed);
+      setPending(res);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onConfirm(e) {
+    e.preventDefault();
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await api.confirmDatabaseRestore(input);
+      setResult(res);
+      setPending(null);
+      setInput('');
+      setParsed(null);
+      setFile(null);
+      onDone();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="restore-panel">
+      <p className="admin-empty" style={{ padding: '10px 20px', textAlign: 'left' }}>
+        Sélectionne un fichier de sauvegarde déjà téléchargé (bouton "Sauvegarder maintenant" plus bas).
+        Les tables <code>users</code> et <code>sessions</code> ne sont jamais restaurées, pour ne pas
+        casser les accès existants.
+      </p>
+      {error && <p className="admin-form__error" style={{ margin: '0 20px' }}>{error}</p>}
+      {result && (
+        <p className="admin-form__success" style={{ margin: '0 20px' }}>
+          Restauration terminée — {result.tablesRestored} table(s) restaurée(s).
+        </p>
+      )}
+
+      {!pending && (
+        <div style={{ padding: '0 20px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <label className="btn btn--sm btn--outline" style={{ cursor: 'pointer' }}>
+            <IconUpload /> Choisir un fichier
+            <input type="file" accept="application/json" onChange={onFileChange} style={{ display: 'none' }} />
+          </label>
+          {file && <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>{file.name}</span>}
+          {parsed && (
+            <button type="button" className="btn btn--sm btn--danger" onClick={onStart} disabled={busy}>
+              Lancer la restauration
+            </button>
+          )}
+        </div>
+      )}
+
+      {pending && (
+        <form onSubmit={onConfirm} className="dev-access-confirm" style={{ margin: '0 20px 16px' }}>
+          <p>
+            Code de confirmation généré : <strong>{pending.code}</strong>
+            <br />
+            {pending.tables.length} table(s) seront intégralement remplacées par le contenu de la
+            sauvegarde : <code>{pending.tables.join(', ')}</code>. Cette action est irréversible.
+            Retape le code pour confirmer.
+          </p>
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Code à 6 chiffres"
+            autoFocus
+            required
+          />
+          <button type="submit" className="btn btn--sm btn--danger" disabled={busy}>Confirmer la restauration</button>
+          <button type="button" className="btn btn--sm btn--outline" onClick={() => { setPending(null); setInput(''); setError(null); }}>
+            Annuler
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
+function DatabasePanel() {
+  const [db, setDb] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [openKey, setOpenKey] = useState(null);
+  const [integrity, setIntegrity] = useState(null);
+  const [checkingIntegrity, setCheckingIntegrity] = useState(false);
+  const [backing, setBacking] = useState(false);
+  const [backupMsg, setBackupMsg] = useState(null);
+
+  function load() {
+    api.getDatabaseOverview().then(setDb).finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    load();
+    const interval = setInterval(load, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  async function onIntegrityCheck() {
+    setCheckingIntegrity(true);
+    try {
+      const res = await api.runIntegrityCheck();
+      setIntegrity(res.results);
+      setOpenKey('db-integrity');
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setCheckingIntegrity(false);
+    }
+  }
+
+  async function onBackup() {
+    setBacking(true);
+    setBackupMsg(null);
+    try {
+      const result = await api.triggerBackup();
+      const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `cortex-backup-${result.createdAt.slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setBackupMsg(`Sauvegarde téléchargée — ${result.tables} tables exportées.`);
+      load();
+    } catch (err) {
+      setBackupMsg(err.message);
+    } finally {
+      setBacking(false);
+    }
+  }
+
+  if (loading && !db) {
+    return (
+      <div className="admin-panel">
+        <div className="admin-panel__header"><h2><IconDatabase /> Base de données</h2></div>
+        <div className="admin-empty">Chargement…</div>
+      </div>
+    );
+  }
+  if (!db) return null;
+
+  return (
+    <div className="admin-panel">
+      <div className="admin-panel__header">
+        <h2><IconDatabase /> Base de données</h2>
+        <button type="button" className="btn btn--sm btn--outline" onClick={load}>
+          <IconRefresh /> Actualiser
+        </button>
+      </div>
+
+      {backupMsg && <p className="admin-form__success" style={{ padding: '0 20px' }}>{backupMsg}</p>}
+
+      <div className="system-status-grid">
+        <DetailRow
+          label="État de la base" detailKey="db-status" openKey={openKey} setOpenKey={setOpenKey}
+          statusOk={db.status === 'ok'} value={db.status === 'ok' ? `Opérationnelle (${db.latencyMs} ms)` : 'Problème'}
+        >
+          <p className="admin-empty" style={{ padding: '10px 20px' }}>
+            Base <code>{db.databaseName}</code> — vérifiée à {new Date(db.checkedAt).toLocaleTimeString()}.
+          </p>
+        </DetailRow>
+
+        <DetailRow
+          label="Tables" detailKey="db-tables" openKey={openKey} setOpenKey={setOpenKey}
+          value={`${db.tableCount} tables · ${db.totalRowsApprox.toLocaleString()} lignes (estimation)`}
+        >
+          <TableSizeList tables={db.tableSizes} />
+        </DetailRow>
+
+        <DetailRow
+          label="Taille de la base" detailKey="db-size" openKey={openKey} setOpenKey={setOpenKey}
+          value={formatBytes(db.totalSizeBytes)}
+        >
+          <TableSizeList tables={db.tableSizes} />
+        </DetailRow>
+
+        <DetailRow
+          label="Connexions actives" detailKey="db-connections" openKey={openKey} setOpenKey={setOpenKey}
+          value={`${db.activeConnections} / ${db.maxConnections} max`}
+        >
+          <p className="admin-empty" style={{ padding: '10px 20px' }}>
+            Nombre de connexions ouvertes vers le serveur MySQL au moment de la vérification
+            (<code>Threads_connected</code>), sur une limite de {db.maxConnections}.
+          </p>
+        </DetailRow>
+
+        <DetailRow
+          label="Requêtes lentes" detailKey="db-slow" openKey={openKey} setOpenKey={setOpenKey}
+          value={`${db.slowQueries.toLocaleString()} depuis le démarrage du serveur MySQL`}
+        >
+          <p className="admin-empty" style={{ padding: '10px 20px' }}>
+            Compteur cumulé <code>Slow_queries</code> de MySQL (seuil actuel : {db.longQueryTimeSeconds}s).
+            Ce compteur porte sur toute la durée de vie du serveur MySQL, pas seulement depuis le dernier
+            déploiement de l'application.
+          </p>
+        </DetailRow>
+
+        <DetailRow
+          label="Erreurs SQL" detailKey="db-errors" openKey={openKey} setOpenKey={setOpenKey}
+          value={`${db.abortedConnects} connexion(s) échouée(s) au serveur`}
+        >
+          <p className="admin-empty" style={{ padding: '10px 20px' }}>
+            Compteur MySQL <code>Aborted_connects</code>. Les erreurs applicatives (requêtes qui échouent
+            depuis le code) apparaissent dans le panneau "Logs et surveillance" plus bas.
+          </p>
+        </DetailRow>
+
+        <DetailRow
+          label="Migrations" detailKey="db-migrations" openKey={openKey} setOpenKey={setOpenKey}
+          value={`${db.migrations.length} fichier(s) dans le dépôt`}
+        >
+          {db.migrations.length === 0 ? (
+            <p className="admin-empty" style={{ padding: '10px 20px' }}>Aucun fichier de migration trouvé.</p>
+          ) : (
+            <ul className="detail-list">
+              {db.migrations.map((m) => (
+                <li key={m.file}><code>{m.file}</code><span>{m.note}</span></li>
+              ))}
+            </ul>
+          )}
+        </DetailRow>
+
+        <DetailRow
+          label="Dernière sauvegarde" detailKey="db-backup" openKey={openKey} setOpenKey={setOpenKey}
+          value={db.lastBackupAt ? new Date(db.lastBackupAt).toLocaleString() : 'Aucune sauvegarde effectuée'}
+        >
+          <div style={{ padding: '10px 20px' }}>
+            <button type="button" className="btn btn--sm btn--outline" onClick={onBackup} disabled={backing}>
+              <IconRefresh /> {backing ? 'Sauvegarde…' : 'Sauvegarder maintenant'}
+            </button>
+          </div>
+        </DetailRow>
+
+        <DetailRow
+          label="Vérification d'intégrité" detailKey="db-integrity" openKey={openKey} setOpenKey={setOpenKey}
+          value={checkingIntegrity ? 'Vérification en cours…' : integrity ? `${integrity.filter((r) => r.status === 'OK').length}/${integrity.length} tables OK` : 'Jamais vérifiée'}
+        >
+          <div style={{ padding: '10px 20px' }}>
+            <button type="button" className="btn btn--sm btn--outline" onClick={onIntegrityCheck} disabled={checkingIntegrity} style={{ marginBottom: 10 }}>
+              <IconRefresh /> Lancer CHECK TABLE sur toutes les tables
+            </button>
+            <IntegrityResults results={integrity} />
+          </div>
+        </DetailRow>
+
+        <DetailRow
+          label="Restauration" detailKey="db-restore" openKey={openKey} setOpenKey={setOpenKey}
+          value="Depuis une sauvegarde JSON"
+        >
+          <RestorePanel onDone={load} />
+        </DetailRow>
+      </div>
+    </div>
+  );
+}
+
 function LogsPanel() {
   const [data, setData] = useState(null);
   const [query, setQuery] = useState('');
@@ -922,6 +1237,7 @@ export default function DeveloperTab() {
 
       <SystemStatusPanel />
       <ApiOverviewPanel />
+      <DatabasePanel />
       <LogsPanel />
       <AdminAccessPanel />
       <ActivityLog />

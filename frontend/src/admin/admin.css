@@ -1015,6 +1015,18 @@
   color: #d1274a;
 }
 
+.btn--danger {
+  background: #d1274a;
+}
+
+.btn--danger:hover {
+  background: #b91c3c;
+}
+
+.restore-panel {
+  padding-top: 4px;
+}
+
 .admin-empty {
   padding: 40px 20px;
   text-align: center;

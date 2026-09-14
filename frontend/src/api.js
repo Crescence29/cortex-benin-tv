@@ -113,6 +113,12 @@ export const api = {
     }).catch(() => {}),
   getSystemStatus: () => request('/admin/system-status'),
   getApiOverview: () => request('/admin/api-overview'),
+  getDatabaseOverview: () => request('/admin/database-overview'),
+  runIntegrityCheck: () => request('/admin/database-overview/integrity-check', { method: 'POST' }),
+  startDatabaseRestore: (backup) =>
+    request('/admin/database-overview/restore/start', { method: 'POST', body: JSON.stringify({ backup }) }),
+  confirmDatabaseRestore: (code) =>
+    request('/admin/database-overview/restore/confirm', { method: 'POST', body: JSON.stringify({ code }) }),
   triggerBackup: () => request('/admin/backup', { method: 'POST' }),
   changePassword: (currentPassword, newPassword) =>
     request('/auth/password', { method: 'PUT', body: JSON.stringify({ currentPassword, newPassword }) }),
