@@ -423,6 +423,107 @@ router.post('/database-overview/restore/confirm', requireAuth, requireDeveloper,
   res.json({ ok: true, tablesRestored: tableNames.length });
 });
 
+// Vue d'ensemble des médias : ce site n'a aucun système d'upload de fichiers
+// (vérifié dans le code) — les images/vidéos sont des URL externes collées
+// par les journalistes, jamais des fichiers stockés sur ce serveur. Il n'y a
+// donc honnêtement ni stockage à mesurer, ni CDN, ni limite de taille
+// d'upload à faire respecter. Ce qui EST réel et utile ici : le compte des
+// médias référencés par type, et la détection de liens morts.
+router.get('/media-overview', requireAuth, requireDeveloper, async (_req, res) => {
+  const [covers] = await pool.query(
+    `SELECT a.id AS article_id, a.cover_image AS url, COALESCE(t.title, '(sans titre)') AS title
+     FROM articles a
+     LEFT JOIN article_translations t ON t.article_id = a.id AND t.lang_code = 'fr'
+     WHERE a.cover_image IS NOT NULL AND a.cover_image != ''`
+  );
+  const [gallery] = await pool.query(
+    `SELECT ai.article_id, ai.url, COALESCE(t.title, '(sans titre)') AS title
+     FROM article_images ai
+     LEFT JOIN article_translations t ON t.article_id = ai.article_id AND t.lang_code = 'fr'
+     WHERE ai.url IS NOT NULL AND ai.url != ''`
+  );
+  const [thumbs] = await pool.query(
+    `SELECT v.id AS video_id, v.thumbnail AS url, COALESCE(t.title, '(sans titre)') AS title
+     FROM videos v
+     LEFT JOIN video_translations t ON t.video_id = v.id AND t.lang_code = 'fr'
+     WHERE v.thumbnail IS NOT NULL AND v.thumbnail != ''`
+  );
+  const [videoUrls] = await pool.query(
+    `SELECT v.id AS video_id, v.video_url AS url, COALESCE(t.title, '(sans titre)') AS title
+     FROM videos v
+     LEFT JOIN video_translations t ON t.video_id = v.id AND t.lang_code = 'fr'
+     WHERE v.video_url IS NOT NULL AND v.video_url != ''`
+  );
+  const [articleVideoUrls] = await pool.query(
+    `SELECT a.id AS article_id, a.video_url AS url, COALESCE(t.title, '(sans titre)') AS title
+     FROM articles a
+     LEFT JOIN article_translations t ON t.article_id = a.id AND t.lang_code = 'fr'
+     WHERE a.video_url IS NOT NULL AND a.video_url != ''`
+  );
+
+  const items = [
+    ...covers.map((c) => ({ url: c.url, title: c.title, source: 'Image de couverture (article)', articleId: c.article_id })),
+    ...gallery.map((g) => ({ url: g.url, title: g.title, source: 'Galerie (article)', articleId: g.article_id })),
+    ...thumbs.map((t) => ({ url: t.url, title: t.title, source: 'Miniature (vidéo)', videoId: t.video_id })),
+    ...videoUrls.map((v) => ({ url: v.url, title: v.title, source: 'Fichier vidéo', videoId: v.video_id })),
+    ...articleVideoUrls.map((v) => ({ url: v.url, title: v.title, source: 'Vidéo intégrée (article)', articleId: v.article_id })),
+  ];
+
+  const byType = {};
+  for (const item of items) {
+    byType[item.source] = (byType[item.source] || 0) + 1;
+  }
+
+  res.json({
+    totalCount: items.length,
+    byType,
+    items,
+    note: "Aucun fichier n'est téléversé ni stocké sur ce serveur : chaque média est une URL externe renseignée manuellement. Il n'y a donc pas de stockage, de CDN, de limite de taille d'upload ou de nettoyage automatique de fichiers à gérer ici — seuls le décompte par type et la vérification des liens sont réels.",
+  });
+});
+
+// Vérifie réellement, en direct, si chaque URL de média référencée répond
+// encore (requête HTTP HEAD, repli en GET si HEAD n'est pas supporté). Limité
+// et parallélisé raisonnablement pour ne pas bloquer le serveur longtemps.
+router.post('/media-overview/check-links', requireAuth, requireDeveloper, async (_req, res) => {
+  const [covers] = await pool.query("SELECT cover_image AS url FROM articles WHERE cover_image IS NOT NULL AND cover_image != ''");
+  const [gallery] = await pool.query("SELECT url FROM article_images WHERE url IS NOT NULL AND url != ''");
+  const [thumbs] = await pool.query("SELECT thumbnail AS url FROM videos WHERE thumbnail IS NOT NULL AND thumbnail != ''");
+  const [videoUrls] = await pool.query("SELECT video_url AS url FROM videos WHERE video_url IS NOT NULL AND video_url != ''");
+  const [articleVideoUrls] = await pool.query("SELECT video_url AS url FROM articles WHERE video_url IS NOT NULL AND video_url != ''");
+
+  const urls = [...new Set([...covers, ...gallery, ...thumbs, ...videoUrls, ...articleVideoUrls].map((r) => r.url))].slice(0, 300);
+
+  async function checkOne(url) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+    try {
+      let response = await fetch(url, { method: 'HEAD', signal: controller.signal, redirect: 'follow' });
+      if (response.status === 405 || response.status === 501) {
+        response = await fetch(url, { method: 'GET', signal: controller.signal, redirect: 'follow' });
+      }
+      return { url, ok: response.ok, statusCode: response.status };
+    } catch (err) {
+      return { url, ok: false, statusCode: null, error: err.name === 'AbortError' ? 'Délai dépassé' : 'Injoignable' };
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  const CONCURRENCY = 8;
+  const results = [];
+  for (let i = 0; i < urls.length; i += CONCURRENCY) {
+    const batch = urls.slice(i, i + CONCURRENCY);
+    results.push(...(await Promise.all(batch.map(checkOne))));
+  }
+
+  res.json({
+    checked: results.length,
+    broken: results.filter((r) => !r.ok),
+    checkedAt: new Date().toISOString(),
+  });
+});
+
 // Sauvegarde manuelle : exporte le contenu réel de chaque table en JSON et
 // l'envoie en téléchargement, tout en enregistrant la date pour l'afficher
 // ensuite comme "Dernière sauvegarde" sur le dashboard.

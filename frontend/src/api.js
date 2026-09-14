@@ -114,6 +114,8 @@ export const api = {
   getSystemStatus: () => request('/admin/system-status'),
   getApiOverview: () => request('/admin/api-overview'),
   getDatabaseOverview: () => request('/admin/database-overview'),
+  getMediaOverview: () => request('/admin/media-overview'),
+  checkMediaLinks: () => request('/admin/media-overview/check-links', { method: 'POST' }),
   runIntegrityCheck: () => request('/admin/database-overview/integrity-check', { method: 'POST' }),
   startDatabaseRestore: (backup) =>
     request('/admin/database-overview/restore/start', { method: 'POST', body: JSON.stringify({ backup }) }),

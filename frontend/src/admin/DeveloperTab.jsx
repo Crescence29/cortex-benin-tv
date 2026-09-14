@@ -19,6 +19,7 @@ import {
   IconBan,
   IconDatabase,
   IconUpload,
+  IconImage,
 } from '../components/Icons';
 
 function formatBytes(bytes) {
@@ -1054,6 +1055,108 @@ function DatabasePanel() {
   );
 }
 
+function BrokenLinksList({ broken }) {
+  if (!broken) return null;
+  if (broken.length === 0) return <p className="admin-empty" style={{ padding: '10px 20px' }}>Aucun lien mort détecté.</p>;
+  return (
+    <ul className="detail-list">
+      {broken.map((b, i) => (
+        <li key={i}>
+          <code style={{ wordBreak: 'break-all' }}>{b.url}</code>
+          <span style={{ color: '#d1274a' }}>{b.error || `HTTP ${b.statusCode}`}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function MediaPanel() {
+  const [media, setMedia] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [openKey, setOpenKey] = useState(null);
+  const [checking, setChecking] = useState(false);
+  const [linkCheck, setLinkCheck] = useState(null);
+
+  function load() {
+    api.getMediaOverview().then(setMedia).finally(() => setLoading(false));
+  }
+
+  useEffect(load, []);
+
+  async function onCheckLinks() {
+    setChecking(true);
+    try {
+      const res = await api.checkMediaLinks();
+      setLinkCheck(res);
+      setOpenKey('media-links');
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  if (loading && !media) {
+    return (
+      <div className="admin-panel">
+        <div className="admin-panel__header"><h2><IconImage /> Fichiers et médias</h2></div>
+        <div className="admin-empty">Chargement…</div>
+      </div>
+    );
+  }
+  if (!media) return null;
+
+  return (
+    <div className="admin-panel">
+      <div className="admin-panel__header">
+        <h2><IconImage /> Fichiers et médias</h2>
+        <button type="button" className="btn btn--sm btn--outline" onClick={load}>
+          <IconRefresh /> Actualiser
+        </button>
+      </div>
+
+      <p className="admin-empty" style={{ padding: '0 20px 12px', textAlign: 'left' }}>{media.note}</p>
+
+      <div className="system-status-grid">
+        <DetailRow
+          label="Médias référencés" detailKey="media-total" openKey={openKey} setOpenKey={setOpenKey}
+          value={`${media.totalCount} au total`}
+        >
+          <ul className="detail-list">
+            {Object.entries(media.byType).map(([type, count]) => (
+              <li key={type}><span>{type}</span><span>{count}</span></li>
+            ))}
+          </ul>
+        </DetailRow>
+
+        <DetailRow
+          label="Vérification des liens" detailKey="media-links" openKey={openKey} setOpenKey={setOpenKey}
+          value={checking ? 'Vérification en cours…' : linkCheck ? `${linkCheck.broken.length} lien(s) mort(s) sur ${linkCheck.checked} vérifié(s)` : 'Jamais vérifié'}
+        >
+          <div style={{ padding: '10px 20px' }}>
+            <button type="button" className="btn btn--sm btn--outline" onClick={onCheckLinks} disabled={checking} style={{ marginBottom: 10 }}>
+              <IconRefresh /> {checking ? 'Vérification…' : 'Vérifier tous les liens maintenant'}
+            </button>
+            <BrokenLinksList broken={linkCheck?.broken} />
+          </div>
+        </DetailRow>
+
+        <DetailRow
+          label="Stockage / CDN / Uploads" detailKey="media-storage" openKey={openKey} setOpenKey={setOpenKey}
+          value="Non applicable"
+        >
+          <p className="admin-empty" style={{ padding: '10px 20px' }}>
+            Aucun système d'upload de fichiers n'existe sur ce site : les images et vidéos sont des URL
+            externes collées par les journalistes. Il n'y a donc pas de stockage, de CDN, de limites de
+            taille d'upload, de formats autorisés à l'envoi, ni de nettoyage automatique de fichiers à
+            afficher honnêtement ici.
+          </p>
+        </DetailRow>
+      </div>
+    </div>
+  );
+}
+
 function LogsPanel() {
   const [data, setData] = useState(null);
   const [query, setQuery] = useState('');
@@ -1238,6 +1341,7 @@ export default function DeveloperTab() {
       <SystemStatusPanel />
       <ApiOverviewPanel />
       <DatabasePanel />
+      <MediaPanel />
       <LogsPanel />
       <AdminAccessPanel />
       <ActivityLog />
