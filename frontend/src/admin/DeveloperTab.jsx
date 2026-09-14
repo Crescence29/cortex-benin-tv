@@ -3,7 +3,7 @@ import { api } from '../api';
 import { useAuth } from './AuthContext';
 import AdminLayout from './AdminLayout';
 import { setLogoState } from '../logoStore';
-import { roleLabel } from './roles';
+import { roleLabel, canManage } from './roles';
 import {
   IconLogIn,
   IconAlertTriangle,
@@ -15,6 +15,7 @@ import {
   IconRefresh,
   IconLock,
   IconLink,
+  IconBan,
 } from '../components/Icons';
 
 function formatBytes(bytes) {
@@ -533,6 +534,21 @@ function AdminAccessPanel() {
     });
   }
 
+  async function onToggleActive(u) {
+    const label = u.is_active ? 'désactiver' : 'réactiver';
+    if (!confirm(`Confirmer : ${label} le compte de ${u.name} ?`)) return;
+    setBusyId(u.id);
+    setError(null);
+    try {
+      await api.updateUser(u.id, { is_active: !u.is_active });
+      load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
     <div className="admin-panel">
       <div className="admin-panel__header">
@@ -560,26 +576,50 @@ function AdminAccessPanel() {
 
       <table className="data-table">
         <thead>
-          <tr><th>Nom</th><th>Email</th><th>Rôle</th><th></th></tr>
+          <tr><th>Nom</th><th>Email</th><th>Rôle</th><th>Statut</th><th></th></tr>
         </thead>
         <tbody>
-          {users.map((u) => (
-            <tr key={u.id}>
-              <td>{u.name}</td>
-              <td>{u.email}</td>
-              <td>{roleLabel(u.role)}</td>
-              <td>
-                <button
-                  type="button"
-                  className="btn btn--sm btn--outline"
-                  onClick={() => onReset(u)}
-                  disabled={busyId === u.id}
-                >
-                  <IconLock /> {busyId === u.id ? 'Réinitialisation…' : 'Réinitialiser le mot de passe'}
-                </button>
-              </td>
-            </tr>
-          ))}
+          {users.map((u) => {
+            const isSelf = u.id === me?.id;
+            const manageable = canManage(me?.role, u.role);
+            return (
+              <tr key={u.id}>
+                <td>{u.name}</td>
+                <td>{u.email}</td>
+                <td>{roleLabel(u.role)}</td>
+                <td>
+                  {u.is_active ? (
+                    <span className="badge badge--ok">Actif</span>
+                  ) : (
+                    <span className="badge badge--muted">Désactivé</span>
+                  )}
+                </td>
+                <td>
+                  <div className="row-actions">
+                    <button
+                      type="button"
+                      className="btn btn--sm btn--outline"
+                      onClick={() => onReset(u)}
+                      disabled={busyId === u.id}
+                    >
+                      <IconLock /> {busyId === u.id ? 'Réinitialisation…' : 'Réinitialiser le mot de passe'}
+                    </button>
+                    {manageable && !isSelf && (
+                      <button
+                        type="button"
+                        className="btn btn--sm btn--outline"
+                        onClick={() => onToggleActive(u)}
+                        disabled={busyId === u.id}
+                        title={u.is_active ? 'Désactiver le compte' : 'Réactiver le compte'}
+                      >
+                        {u.is_active ? <IconBan /> : <IconRefresh />} {u.is_active ? 'Désactiver' : 'Réactiver'}
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
