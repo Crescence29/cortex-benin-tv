@@ -23,9 +23,10 @@ router.post('/login', async (req, res) => {
     return res.status(401).json({ error: 'Identifiants invalides' });
   }
 
-  if (!user.is_active) {
-    await logActivity({ actorId: user.id, actorName: user.name, actorRole: user.role, action: 'login_failed', details: 'Compte désactivé', ip });
-    return res.status(403).json({ error: 'Ce compte a été désactivé' });
+  if (user.status !== 'active') {
+    const messages = { suspended: 'Ce compte a été suspendu', banned: 'Ce compte a été banni' };
+    await logActivity({ actorId: user.id, actorName: user.name, actorRole: user.role, action: 'login_failed', details: `Compte ${user.status}`, ip });
+    return res.status(403).json({ error: messages[user.status] || 'Ce compte a été désactivé' });
   }
 
   const valid = await bcrypt.compare(password, user.password_hash);

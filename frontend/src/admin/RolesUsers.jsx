@@ -2,8 +2,9 @@ import { Fragment, useEffect, useState } from 'react';
 import { api } from '../api';
 import { useAuth } from './AuthContext';
 import AdminLayout from './AdminLayout';
-import { IconTrash, IconPlus, IconLock, IconChevronDown, IconLogout, IconBan, IconRefresh } from '../components/Icons';
-import { ROLE_LABELS, ROLE_RANK, canManage } from './roles';
+import { IconTrash, IconPlus, IconLock, IconChevronDown, IconLogout, IconBan, IconRefresh, IconUserPlus } from '../components/Icons';
+import { ROLE_LABELS, ROLE_RANK, STATUS_LABELS, canManage } from './roles';
+import CodeConfirmAction from './CodeConfirmAction';
 
 function ResetPasswordRow({ user, onDone }) {
   const [password, setPassword] = useState('');
@@ -39,72 +40,6 @@ function ResetPasswordRow({ user, onDone }) {
       />
       <button type="submit" className="btn btn--sm" disabled={saving}>{saving ? '…' : 'Valider'}</button>
       <button type="button" className="btn btn--sm btn--outline" onClick={() => onDone(false)}>Annuler</button>
-      {error && <span className="admin-form__error" style={{ margin: 0 }}>{error}</span>}
-    </form>
-  );
-}
-
-function DeveloperAccessToggle({ user, onDone }) {
-  const [pending, setPending] = useState(null); // { code, desired }
-  const [input, setInput] = useState('');
-  const [error, setError] = useState(null);
-  const [busy, setBusy] = useState(false);
-
-  async function onStart() {
-    setError(null);
-    setBusy(true);
-    try {
-      const res = await api.startDeveloperAccess(user.id);
-      setPending(res);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function onConfirm(e) {
-    e.preventDefault();
-    setError(null);
-    setBusy(true);
-    try {
-      await api.confirmDeveloperAccess(user.id, input);
-      setPending(null);
-      setInput('');
-      onDone();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  if (!pending) {
-    return (
-      <button type="button" className="btn btn--sm btn--outline dev-access-btn" onClick={onStart} disabled={busy}>
-        {user.is_developer ? 'Retirer accès développeur' : 'Accorder accès développeur'}
-      </button>
-    );
-  }
-
-  return (
-    <form onSubmit={onConfirm} className="dev-access-confirm">
-      <p>
-        Code de confirmation généré : <strong>{pending.code}</strong>
-        <br />
-        Retape-le ci-dessous pour {pending.desired ? 'accorder' : 'retirer'} l'accès développeur à {user.name}.
-      </p>
-      <input
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        placeholder="Code à 6 chiffres"
-        autoFocus
-        required
-      />
-      <button type="submit" className="btn btn--sm" disabled={busy}>Confirmer</button>
-      <button type="button" className="btn btn--sm btn--outline" onClick={() => { setPending(null); setInput(''); setError(null); }}>
-        Annuler
-      </button>
       {error && <span className="admin-form__error" style={{ margin: 0 }}>{error}</span>}
     </form>
   );
@@ -187,11 +122,11 @@ export default function RolesUsers() {
     load();
   }
 
-  async function onToggleActive(u) {
-    const label = u.is_active ? 'désactiver' : 'réactiver';
+  async function onSuspendToggle(u) {
+    const label = u.status === 'active' ? 'suspendre' : 'réactiver';
     if (!confirm(`Confirmer : ${label} le compte de ${u.name} ?`)) return;
     try {
-      await api.updateUser(u.id, { is_active: !u.is_active });
+      await api.suspendUser(u.id);
       load();
     } catch (err) {
       alert(err.message);
@@ -216,6 +151,13 @@ export default function RolesUsers() {
     } catch (err) {
       alert(err.message);
     }
+  }
+
+  async function onImpersonateConfirm(u, code) {
+    const { token, user } = await api.confirmImpersonate(u.id, code);
+    localStorage.setItem('cortex_token', token);
+    localStorage.setItem('cortex_user', JSON.stringify(user));
+    window.location.href = '/admin';
   }
 
   function onResetDone(userName, success) {
@@ -287,9 +229,10 @@ export default function RolesUsers() {
             {users.map((u) => {
               const manageable = canManage(me?.role, u.role);
               const isSelf = u.id === me.id;
+              const isBanned = u.status === 'banned';
               return (
                 <Fragment key={u.id}>
-                  <tr className={!u.is_active ? 'data-table__row--muted' : ''}>
+                  <tr className={u.status !== 'active' ? 'data-table__row--muted' : ''}>
                     <td>{u.name}</td>
                     <td>{u.email}</td>
                     <td>
@@ -307,44 +250,88 @@ export default function RolesUsers() {
                       {!!u.is_developer && <span className="dev-flag-badge">Développeur</span>}
                       {me?.is_developer && !isSelf && (
                         <div className="dev-access-cell">
-                          <DeveloperAccessToggle user={u} onDone={load} />
+                          <CodeConfirmAction
+                            buttonLabel={u.is_developer ? 'Retirer accès développeur' : 'Accorder accès développeur'}
+                            buttonClassName="btn btn--sm btn--outline dev-access-btn"
+                            onStart={() => api.startDeveloperAccess(u.id)}
+                            onConfirm={(code) => api.confirmDeveloperAccess(u.id, code)}
+                            onDone={load}
+                            confirmText={(p) => `Retape-le ci-dessous pour ${p.desired ? 'accorder' : 'retirer'} l'accès développeur à ${u.name}.`}
+                          />
                         </div>
                       )}
                     </td>
                     <td>
-                      {u.is_active ? (
-                        <span className="badge badge--ok">Actif</span>
-                      ) : (
-                        <span className="badge badge--muted">Désactivé</span>
-                      )}
+                      <span className={
+                        'badge ' + (u.status === 'active' ? 'badge--ok' : u.status === 'banned' ? 'badge--danger' : 'badge--muted')
+                      }>
+                        {STATUS_LABELS[u.status] || u.status}
+                      </span>
                     </td>
                     <td>{formatDate(u.last_seen_at)}</td>
                     <td>
                       {resettingId === u.id ? (
                         <ResetPasswordRow user={u} onDone={(success) => onResetDone(u.name, success)} />
                       ) : (
-                        <div className="row-actions">
+                        <div className="row-actions row-actions--wrap">
                           <button
+                            className="btn btn--sm btn--outline"
                             onClick={() => setExpandedId(expandedId === u.id ? null : u.id)}
                             title="Voir les sessions actives"
                           >
-                            <IconChevronDown />
+                            <IconChevronDown /> Sessions
                           </button>
                           {(manageable || isSelf) && (
-                            <button onClick={() => setResettingId(u.id)} title="Réinitialiser le mot de passe">
-                              <IconLock />
+                            <button className="btn btn--sm btn--outline" onClick={() => setResettingId(u.id)} title="Réinitialiser le mot de passe">
+                              <IconLock /> Mot de passe
                             </button>
                           )}
-                          {manageable && (
+                          {manageable && !isBanned && (
                             <button
-                              onClick={() => onToggleActive(u)}
-                              title={u.is_active ? 'Désactiver le compte' : 'Réactiver le compte'}
+                              className="btn btn--sm btn--outline"
+                              onClick={() => onSuspendToggle(u)}
+                              title={u.status === 'active' ? 'Suspendre le compte (réversible)' : 'Réactiver le compte'}
                             >
-                              {u.is_active ? <IconBan /> : <IconRefresh />}
+                              {u.status === 'active' ? <IconBan /> : <IconRefresh />} {u.status === 'active' ? 'Suspendre' : 'Réactiver'}
                             </button>
+                          )}
+                          {manageable && !isBanned && (
+                            <CodeConfirmAction
+                              buttonLabel="Bannir"
+                              buttonIcon={IconBan}
+                              buttonClassName="btn btn--sm btn--outline btn--danger"
+                              onStart={() => api.startBanUser(u.id)}
+                              onConfirm={(code) => api.confirmBanUser(u.id, code)}
+                              onDone={load}
+                              confirmText={() => `Retape-le ci-dessous pour bannir définitivement ${u.name}. Ses sessions seront immédiatement déconnectées.`}
+                            />
+                          )}
+                          {manageable && isBanned && (
+                            <CodeConfirmAction
+                              buttonLabel="Débannir"
+                              buttonIcon={IconRefresh}
+                              buttonClassName="btn btn--sm btn--outline"
+                              onStart={() => api.startUnbanUser(u.id)}
+                              onConfirm={(code) => api.confirmUnbanUser(u.id, code)}
+                              onDone={load}
+                              confirmText={() => `Retape-le ci-dessous pour lever le bannissement de ${u.name}.`}
+                            />
+                          )}
+                          {me?.is_developer && !isSelf && !u.is_developer && u.status === 'active' && (
+                            <CodeConfirmAction
+                              buttonLabel="Se connecter en tant que"
+                              buttonIcon={IconUserPlus}
+                              buttonClassName="btn btn--sm btn--outline"
+                              onStart={() => api.startImpersonate(u.id)}
+                              onConfirm={(code) => onImpersonateConfirm(u, code)}
+                              onDone={() => {}}
+                              confirmText={() => `Retape-le ci-dessous pour te connecter directement sur le compte de ${u.name}, sans son mot de passe. Action journalisée.`}
+                            />
                           )}
                           {manageable && !isSelf && (
-                            <button onClick={() => onDelete(u.id)} title="Supprimer"><IconTrash /></button>
+                            <button className="btn btn--sm btn--outline btn--danger" onClick={() => onDelete(u.id)} title="Supprimer">
+                              <IconTrash /> Supprimer
+                            </button>
                           )}
                         </div>
                       )}

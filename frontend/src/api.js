@@ -48,6 +48,14 @@ export const api = {
   startDeveloperAccess: (id) => request(`/users/${id}/developer-access/start`, { method: 'POST' }),
   confirmDeveloperAccess: (id, code) =>
     request(`/users/${id}/developer-access/confirm`, { method: 'POST', body: JSON.stringify({ code }) }),
+  suspendUser: (id) => request(`/users/${id}/suspend`, { method: 'POST' }),
+  startBanUser: (id) => request(`/users/${id}/ban/start`, { method: 'POST' }),
+  confirmBanUser: (id, code) => request(`/users/${id}/ban/confirm`, { method: 'POST', body: JSON.stringify({ code }) }),
+  startUnbanUser: (id) => request(`/users/${id}/unban/start`, { method: 'POST' }),
+  confirmUnbanUser: (id, code) => request(`/users/${id}/unban/confirm`, { method: 'POST', body: JSON.stringify({ code }) }),
+  startImpersonate: (id) => request(`/users/${id}/impersonate/start`, { method: 'POST' }),
+  confirmImpersonate: (id, code) =>
+    request(`/users/${id}/impersonate/confirm`, { method: 'POST', body: JSON.stringify({ code }) }),
   adminGetArticles: (params = {}) => request(`/articles/admin/all?${new URLSearchParams(params)}`),
   adminGetArticle: (id) => request(`/articles/admin/${id}`),
   createArticle: (data) => request('/articles', { method: 'POST', body: JSON.stringify(data) }),

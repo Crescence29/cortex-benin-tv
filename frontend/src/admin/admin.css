@@ -955,6 +955,55 @@
   color: var(--red-bright);
 }
 
+/* .row-actions button {background:none;border:none} above would otherwise
+   strip the visual style off any .btn placed inside a row-actions cell —
+   restore it explicitly, with a selector specific enough to win. */
+.row-actions--wrap {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.row-actions .btn {
+  background: var(--red);
+  color: var(--white);
+  border-radius: 6px;
+  padding: 6px 12px;
+}
+
+.row-actions .btn:hover {
+  background: var(--red-bright);
+  color: var(--white);
+}
+
+.row-actions .btn--outline {
+  background: transparent;
+  border: 1.5px solid var(--border);
+  color: var(--text);
+}
+
+.row-actions .btn--outline:hover {
+  border-color: var(--red);
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 8%, transparent);
+}
+
+.row-actions .btn--danger.btn--outline {
+  border-color: color-mix(in srgb, #d1274a 55%, var(--border));
+  color: #d1274a;
+}
+
+.row-actions .btn--danger.btn--outline:hover {
+  background: color-mix(in srgb, #d1274a 12%, transparent);
+  border-color: #d1274a;
+  color: #d1274a;
+}
+
+.badge--danger {
+  background: color-mix(in srgb, #d1274a 18%, transparent);
+  color: #d1274a;
+}
+
 .admin-empty {
   padding: 40px 20px;
   text-align: center;

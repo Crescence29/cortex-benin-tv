@@ -14,3 +14,9 @@ export function roleLabel(role) {
 export function canManage(actorRole, targetRole) {
   return (ROLE_RANK[actorRole] || 0) > (ROLE_RANK[targetRole] || 0);
 }
+
+export const STATUS_LABELS = {
+  active: 'Actif',
+  suspended: 'Suspendu',
+  banned: 'Banni',
+};

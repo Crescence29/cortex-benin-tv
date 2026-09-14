@@ -34,7 +34,7 @@ export default function Journalists() {
           </thead>
           <tbody>
             {users.map((u) => (
-              <tr key={u.id} className={!u.is_active ? 'data-table__row--muted' : ''}>
+              <tr key={u.id} className={u.status !== 'active' ? 'data-table__row--muted' : ''}>
                 <td>{u.name}</td>
                 <td>{u.email}</td>
                 <td>{ROLE_LABELS[u.role] || u.role}</td>

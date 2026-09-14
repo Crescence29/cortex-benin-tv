@@ -3,7 +3,8 @@ import { api } from '../api';
 import { useAuth } from './AuthContext';
 import AdminLayout from './AdminLayout';
 import { setLogoState } from '../logoStore';
-import { roleLabel, canManage } from './roles';
+import { roleLabel, canManage, STATUS_LABELS } from './roles';
+import CodeConfirmAction from './CodeConfirmAction';
 import {
   IconLogIn,
   IconAlertTriangle,
@@ -467,7 +468,7 @@ function ApiOverviewPanel() {
   );
 }
 
-const SENSITIVE_ACTIONS = new Set(['login_failed', 'role_changed', 'email_changed', 'user_deleted', 'password_reset', 'developer_access_granted', 'developer_access_revoked']);
+const SENSITIVE_ACTIONS = new Set(['login_failed', 'role_changed', 'email_changed', 'user_deleted', 'password_reset', 'developer_access_granted', 'developer_access_revoked', 'user_banned', 'user_unbanned', 'impersonation_started']);
 
 const ACTION_META = {
   login_success: { label: 'Connexion réussie', icon: IconLogIn },
@@ -479,6 +480,10 @@ const ACTION_META = {
   user_deleted: { label: 'Compte supprimé', icon: IconTrash },
   user_deactivated: { label: 'Compte désactivé', icon: IconLock },
   user_reactivated: { label: 'Compte réactivé', icon: IconRefresh },
+  user_suspended: { label: 'Compte suspendu', icon: IconBan },
+  user_banned: { label: 'Compte banni', icon: IconBan },
+  user_unbanned: { label: 'Compte débanni', icon: IconRefresh },
+  impersonation_started: { label: 'Connexion en tant qu\'un autre compte', icon: IconUserPlus },
   password_reset: { label: 'Mot de passe réinitialisé', icon: IconLock },
   developer_access_granted: { label: 'Accès développeur accordé', icon: IconShield },
   developer_access_revoked: { label: 'Accès développeur retiré', icon: IconShield },
@@ -534,19 +539,26 @@ function AdminAccessPanel() {
     });
   }
 
-  async function onToggleActive(u) {
-    const label = u.is_active ? 'désactiver' : 'réactiver';
+  async function onSuspendToggle(u) {
+    const label = u.status === 'active' ? 'suspendre' : 'réactiver';
     if (!confirm(`Confirmer : ${label} le compte de ${u.name} ?`)) return;
     setBusyId(u.id);
     setError(null);
     try {
-      await api.updateUser(u.id, { is_active: !u.is_active });
+      await api.suspendUser(u.id);
       load();
     } catch (err) {
       setError(err.message);
     } finally {
       setBusyId(null);
     }
+  }
+
+  async function onImpersonateConfirm(u, code) {
+    const { token, user } = await api.confirmImpersonate(u.id, code);
+    localStorage.setItem('cortex_token', token);
+    localStorage.setItem('cortex_user', JSON.stringify(user));
+    window.location.href = '/admin';
   }
 
   return (
@@ -582,38 +594,72 @@ function AdminAccessPanel() {
           {users.map((u) => {
             const isSelf = u.id === me?.id;
             const manageable = canManage(me?.role, u.role);
+            const isBanned = u.status === 'banned';
             return (
               <tr key={u.id}>
                 <td>{u.name}</td>
                 <td>{u.email}</td>
                 <td>{roleLabel(u.role)}</td>
                 <td>
-                  {u.is_active ? (
-                    <span className="badge badge--ok">Actif</span>
-                  ) : (
-                    <span className="badge badge--muted">Désactivé</span>
-                  )}
+                  <span className={
+                    'badge ' + (u.status === 'active' ? 'badge--ok' : u.status === 'banned' ? 'badge--danger' : 'badge--muted')
+                  }>
+                    {STATUS_LABELS[u.status] || u.status}
+                  </span>
                 </td>
                 <td>
-                  <div className="row-actions">
+                  <div className="row-actions row-actions--wrap">
                     <button
                       type="button"
                       className="btn btn--sm btn--outline"
                       onClick={() => onReset(u)}
                       disabled={busyId === u.id}
                     >
-                      <IconLock /> {busyId === u.id ? 'Réinitialisation…' : 'Réinitialiser le mot de passe'}
+                      <IconLock /> {busyId === u.id ? 'Réinitialisation…' : 'Mot de passe'}
                     </button>
-                    {manageable && !isSelf && (
+                    {manageable && !isSelf && !isBanned && (
                       <button
                         type="button"
                         className="btn btn--sm btn--outline"
-                        onClick={() => onToggleActive(u)}
+                        onClick={() => onSuspendToggle(u)}
                         disabled={busyId === u.id}
-                        title={u.is_active ? 'Désactiver le compte' : 'Réactiver le compte'}
+                        title={u.status === 'active' ? 'Suspendre le compte (réversible)' : 'Réactiver le compte'}
                       >
-                        {u.is_active ? <IconBan /> : <IconRefresh />} {u.is_active ? 'Désactiver' : 'Réactiver'}
+                        {u.status === 'active' ? <IconBan /> : <IconRefresh />} {u.status === 'active' ? 'Suspendre' : 'Réactiver'}
                       </button>
+                    )}
+                    {manageable && !isSelf && !isBanned && (
+                      <CodeConfirmAction
+                        buttonLabel="Bannir"
+                        buttonIcon={IconBan}
+                        buttonClassName="btn btn--sm btn--outline btn--danger"
+                        onStart={() => api.startBanUser(u.id)}
+                        onConfirm={(code) => api.confirmBanUser(u.id, code)}
+                        onDone={load}
+                        confirmText={() => `Retape-le ci-dessous pour bannir définitivement ${u.name}.`}
+                      />
+                    )}
+                    {manageable && !isSelf && isBanned && (
+                      <CodeConfirmAction
+                        buttonLabel="Débannir"
+                        buttonIcon={IconRefresh}
+                        buttonClassName="btn btn--sm btn--outline"
+                        onStart={() => api.startUnbanUser(u.id)}
+                        onConfirm={(code) => api.confirmUnbanUser(u.id, code)}
+                        onDone={load}
+                        confirmText={() => `Retape-le ci-dessous pour lever le bannissement de ${u.name}.`}
+                      />
+                    )}
+                    {me?.is_developer && !isSelf && !u.is_developer && u.status === 'active' && (
+                      <CodeConfirmAction
+                        buttonLabel="Se connecter en tant que"
+                        buttonIcon={IconUserPlus}
+                        buttonClassName="btn btn--sm btn--outline"
+                        onStart={() => api.startImpersonate(u.id)}
+                        onConfirm={(code) => onImpersonateConfirm(u, code)}
+                        onDone={() => {}}
+                        confirmText={() => `Retape-le ci-dessous pour te connecter directement sur le compte de ${u.name}, sans son mot de passe. Action journalisée.`}
+                      />
                     )}
                   </div>
                 </td>

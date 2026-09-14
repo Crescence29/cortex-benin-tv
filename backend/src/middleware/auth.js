@@ -28,9 +28,10 @@ export async function requireAuth(req, res, next) {
     pool.query('UPDATE sessions SET last_seen_at = NOW() WHERE token_id = ?', [payload.jti]).catch(() => {});
   }
 
-  const [[user]] = await pool.query('SELECT is_active FROM users WHERE id = ?', [payload.id]);
-  if (!user || !user.is_active) {
-    return res.status(403).json({ error: 'Compte désactivé' });
+  const [[user]] = await pool.query('SELECT status FROM users WHERE id = ?', [payload.id]);
+  if (!user || user.status !== 'active') {
+    const messages = { suspended: 'Compte suspendu', banned: 'Compte banni' };
+    return res.status(403).json({ error: messages[user?.status] || 'Compte désactivé' });
   }
 
   req.user = payload;

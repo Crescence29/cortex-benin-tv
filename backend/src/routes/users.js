@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import crypto from 'node:crypto';
 import { pool } from '../db/pool.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -13,22 +14,43 @@ async function getTargetUser(id) {
   return row;
 }
 
-// Demandes en attente de confirmation pour accorder/retirer l'accès développeur.
-// Volontairement en mémoire (pas en base) : c'est une friction anti-clic-accidentel
-// de courte durée, pas un vrai secret à protéger sur le long terme.
+// Confirmations par code à 6 chiffres pour les actions sensibles et
+// difficiles à annuler (accès développeur, bannissement/débannissement).
+// Volontairement en mémoire (pas en base) : c'est une friction anti-clic-
+// accidentel de courte durée, pas un vrai secret à protéger sur le long terme.
 const pendingDeveloperAccess = new Map();
-const DEVELOPER_ACCESS_TTL_MS = 5 * 60 * 1000;
+const pendingBanActions = new Map();
+const CONFIRM_TTL_MS = 5 * 60 * 1000;
 
-function cleanupPendingDeveloperAccess() {
+function cleanupPending(map) {
   const now = Date.now();
-  for (const [id, entry] of pendingDeveloperAccess) {
-    if (entry.expiresAt < now) pendingDeveloperAccess.delete(id);
+  for (const [id, entry] of map) {
+    if (entry.expiresAt < now) map.delete(id);
   }
+}
+
+function startPending(map, id, payload) {
+  cleanupPending(map);
+  const code = crypto.randomInt(100000, 1000000).toString();
+  map.set(id, { ...payload, code, expiresAt: Date.now() + CONFIRM_TTL_MS });
+  return code;
+}
+
+function checkPending(map, id, code, actorId) {
+  const pending = map.get(id);
+  if (!pending || pending.actorId !== actorId || pending.expiresAt < Date.now()) {
+    return { ok: false, error: 'Code expiré ou demande introuvable, recommencez' };
+  }
+  if (pending.code !== String(code || '')) {
+    return { ok: false, error: 'Code incorrect' };
+  }
+  map.delete(id);
+  return { ok: true, pending };
 }
 
 router.get('/', requireAuth, async (req, res) => {
   const [rows] = await pool.query(
-    `SELECT u.id, u.name, u.email, u.role, u.is_developer, u.is_active, u.created_at,
+    `SELECT u.id, u.name, u.email, u.role, u.is_developer, u.status, u.created_at,
             (SELECT MAX(s.last_seen_at) FROM sessions s WHERE s.user_id = u.id) AS last_seen_at
      FROM users u ORDER BY u.name`
   );
@@ -85,48 +107,183 @@ router.post('/:id/developer-access/start', requireAuth, async (req, res) => {
   const target = await getTargetUser(req.params.id);
   if (!target) return res.status(404).json({ error: 'Utilisateur introuvable' });
 
-  cleanupPendingDeveloperAccess();
   const desired = !target.is_developer;
-  const code = crypto.randomInt(100000, 1000000).toString();
-  pendingDeveloperAccess.set(req.params.id, {
-    code,
-    desired,
-    actorId: req.user.id,
-    expiresAt: Date.now() + DEVELOPER_ACCESS_TTL_MS,
-  });
-  res.json({ code, desired, expiresInSeconds: DEVELOPER_ACCESS_TTL_MS / 1000 });
+  const code = startPending(pendingDeveloperAccess, req.params.id, { desired, actorId: req.user.id });
+  res.json({ code, desired, expiresInSeconds: CONFIRM_TTL_MS / 1000 });
 });
 
 router.post('/:id/developer-access/confirm', requireAuth, async (req, res) => {
   if (!req.user.is_developer) {
     return res.status(403).json({ error: "Seul un compte développeur peut accorder ou retirer cet accès" });
   }
-  const { code } = req.body;
-  const pending = pendingDeveloperAccess.get(req.params.id);
-  if (!pending || pending.actorId !== req.user.id || pending.expiresAt < Date.now()) {
-    return res.status(400).json({ error: 'Code expiré ou demande introuvable, recommencez' });
-  }
-  if (pending.code !== String(code || '')) {
-    return res.status(400).json({ error: 'Code incorrect' });
-  }
+  const check = checkPending(pendingDeveloperAccess, req.params.id, req.body.code, req.user.id);
+  if (!check.ok) return res.status(400).json({ error: check.error });
   const target = await getTargetUser(req.params.id);
   if (!target) return res.status(404).json({ error: 'Utilisateur introuvable' });
 
-  await pool.query('UPDATE users SET is_developer = ? WHERE id = ?', [pending.desired, req.params.id]);
-  pendingDeveloperAccess.delete(req.params.id);
+  await pool.query('UPDATE users SET is_developer = ? WHERE id = ?', [check.pending.desired, req.params.id]);
 
   await logActivity({
     actorId: req.user.id,
     actorName: req.user.name,
     actorRole: req.user.role,
-    action: pending.desired ? 'developer_access_granted' : 'developer_access_revoked',
+    action: check.pending.desired ? 'developer_access_granted' : 'developer_access_revoked',
     targetType: 'user',
     targetId: req.params.id,
     details: target.name,
     ip: clientIp(req),
   });
 
-  res.json({ ok: true, is_developer: pending.desired });
+  res.json({ ok: true, is_developer: check.pending.desired });
+});
+
+// Suspension : réversible en un clic (pas de code), comme avant. La cible ne
+// peut pas être bannie ici — voir /ban/start et /ban/confirm, à dessein plus
+// lourds à déclencher ET à annuler.
+router.post('/:id/suspend', requireAuth, requireMinRole('admin'), async (req, res) => {
+  if (Number(req.params.id) === req.user.id) {
+    return res.status(400).json({ error: 'Vous ne pouvez pas suspendre votre propre compte' });
+  }
+  const target = await getTargetUser(req.params.id);
+  if (!target) return res.status(404).json({ error: 'Utilisateur introuvable' });
+  if (!canManage(req.user.role, target.role)) {
+    return res.status(403).json({ error: 'Droits insuffisants pour modifier ce compte' });
+  }
+  if (target.status === 'banned') {
+    return res.status(400).json({ error: 'Ce compte est banni ; utilisez le débannissement pour le réactiver' });
+  }
+
+  const nextStatus = target.status === 'active' ? 'suspended' : 'active';
+  await pool.query('UPDATE users SET status = ? WHERE id = ?', [nextStatus, req.params.id]);
+  if (nextStatus === 'suspended') {
+    await pool.query('UPDATE sessions SET revoked_at = NOW() WHERE user_id = ? AND revoked_at IS NULL', [req.params.id]);
+  }
+  await logActivity({
+    actorId: req.user.id, actorName: req.user.name, actorRole: req.user.role,
+    action: nextStatus === 'suspended' ? 'user_suspended' : 'user_reactivated',
+    targetType: 'user', targetId: req.params.id, details: target.name, ip: clientIp(req),
+  });
+  res.json({ ok: true, status: nextStatus });
+});
+
+router.post('/:id/ban/start', requireAuth, requireMinRole('admin'), async (req, res) => {
+  if (Number(req.params.id) === req.user.id) {
+    return res.status(400).json({ error: 'Vous ne pouvez pas bannir votre propre compte' });
+  }
+  const target = await getTargetUser(req.params.id);
+  if (!target) return res.status(404).json({ error: 'Utilisateur introuvable' });
+  if (!canManage(req.user.role, target.role)) {
+    return res.status(403).json({ error: 'Droits insuffisants pour modifier ce compte' });
+  }
+  if (target.status === 'banned') return res.status(400).json({ error: 'Ce compte est déjà banni' });
+
+  const code = startPending(pendingBanActions, req.params.id, { desired: 'banned', actorId: req.user.id });
+  res.json({ code, expiresInSeconds: CONFIRM_TTL_MS / 1000 });
+});
+
+router.post('/:id/ban/confirm', requireAuth, requireMinRole('admin'), async (req, res) => {
+  const check = checkPending(pendingBanActions, req.params.id, req.body.code, req.user.id);
+  if (!check.ok) return res.status(400).json({ error: check.error });
+  const target = await getTargetUser(req.params.id);
+  if (!target) return res.status(404).json({ error: 'Utilisateur introuvable' });
+  if (!canManage(req.user.role, target.role)) {
+    return res.status(403).json({ error: 'Droits insuffisants pour modifier ce compte' });
+  }
+
+  await pool.query('UPDATE users SET status = ? WHERE id = ?', ['banned', req.params.id]);
+  await pool.query('UPDATE sessions SET revoked_at = NOW() WHERE user_id = ? AND revoked_at IS NULL', [req.params.id]);
+  await logActivity({
+    actorId: req.user.id, actorName: req.user.name, actorRole: req.user.role,
+    action: 'user_banned', targetType: 'user', targetId: req.params.id, details: target.name, ip: clientIp(req),
+  });
+  res.json({ ok: true, status: 'banned' });
+});
+
+router.post('/:id/unban/start', requireAuth, requireMinRole('admin'), async (req, res) => {
+  const target = await getTargetUser(req.params.id);
+  if (!target) return res.status(404).json({ error: 'Utilisateur introuvable' });
+  if (!canManage(req.user.role, target.role)) {
+    return res.status(403).json({ error: 'Droits insuffisants pour modifier ce compte' });
+  }
+  if (target.status !== 'banned') return res.status(400).json({ error: "Ce compte n'est pas banni" });
+
+  const code = startPending(pendingBanActions, req.params.id, { desired: 'active', actorId: req.user.id });
+  res.json({ code, expiresInSeconds: CONFIRM_TTL_MS / 1000 });
+});
+
+router.post('/:id/unban/confirm', requireAuth, requireMinRole('admin'), async (req, res) => {
+  const check = checkPending(pendingBanActions, req.params.id, req.body.code, req.user.id);
+  if (!check.ok) return res.status(400).json({ error: check.error });
+  const target = await getTargetUser(req.params.id);
+  if (!target) return res.status(404).json({ error: 'Utilisateur introuvable' });
+  if (!canManage(req.user.role, target.role)) {
+    return res.status(403).json({ error: 'Droits insuffisants pour modifier ce compte' });
+  }
+
+  await pool.query('UPDATE users SET status = ? WHERE id = ?', ['active', req.params.id]);
+  await logActivity({
+    actorId: req.user.id, actorName: req.user.name, actorRole: req.user.role,
+    action: 'user_unbanned', targetType: 'user', targetId: req.params.id, details: target.name, ip: clientIp(req),
+  });
+  res.json({ ok: true, status: 'active' });
+});
+
+// Connexion développeur sur n'importe quel compte, sans son mot de passe.
+// Volontairement lourd : réservé aux comptes développeur, confirmation par
+// code, session réelle créée et marquée comme usurpée, journalisée comme
+// action sensible. Un développeur ne peut pas usurper un autre développeur.
+router.post('/:id/impersonate/start', requireAuth, async (req, res) => {
+  if (!req.user.is_developer) {
+    return res.status(403).json({ error: 'Réservé aux comptes développeur' });
+  }
+  if (Number(req.params.id) === req.user.id) {
+    return res.status(400).json({ error: 'Vous êtes déjà connecté sur ce compte' });
+  }
+  const target = await getTargetUser(req.params.id);
+  if (!target) return res.status(404).json({ error: 'Utilisateur introuvable' });
+  if (target.is_developer) {
+    return res.status(403).json({ error: 'Impossible de se connecter sur un autre compte développeur' });
+  }
+  if (target.status !== 'active') {
+    return res.status(400).json({ error: 'Ce compte est suspendu ou banni' });
+  }
+
+  const code = startPending(pendingBanActions, `impersonate:${req.params.id}`, { actorId: req.user.id });
+  res.json({ code, expiresInSeconds: CONFIRM_TTL_MS / 1000 });
+});
+
+router.post('/:id/impersonate/confirm', requireAuth, async (req, res) => {
+  if (!req.user.is_developer) {
+    return res.status(403).json({ error: 'Réservé aux comptes développeur' });
+  }
+  const check = checkPending(pendingBanActions, `impersonate:${req.params.id}`, req.body.code, req.user.id);
+  if (!check.ok) return res.status(400).json({ error: check.error });
+  const target = await getTargetUser(req.params.id);
+  if (!target) return res.status(404).json({ error: 'Utilisateur introuvable' });
+
+  const tokenId = crypto.randomBytes(24).toString('hex');
+  await pool.query(
+    'INSERT INTO sessions (user_id, token_id, ip_address, user_agent) VALUES (?, ?, ?, ?)',
+    [target.id, tokenId, clientIp(req), `Usurpation par ${req.user.name} — ${(req.headers['user-agent'] || '').slice(0, 200)}`]
+  );
+  const token = jwt.sign(
+    { id: target.id, name: target.name, role: target.role, is_developer: !!target.is_developer, jti: tokenId, impersonatedBy: req.user.id },
+    process.env.JWT_SECRET,
+    { expiresIn: '2h' }
+  );
+
+  await logActivity({
+    actorId: req.user.id,
+    actorName: req.user.name,
+    actorRole: req.user.role,
+    action: 'impersonation_started',
+    targetType: 'user',
+    targetId: req.params.id,
+    details: `${req.user.name} s'est connecté en tant que ${target.name} (${target.email})`,
+    ip: clientIp(req),
+  });
+
+  res.json({ token, user: { id: target.id, name: target.name, role: target.role, is_developer: !!target.is_developer } });
 });
 
 router.post('/', requireAuth, requireMinRole('admin'), async (req, res) => {
@@ -162,7 +319,7 @@ router.post('/', requireAuth, requireMinRole('admin'), async (req, res) => {
 });
 
 router.put('/:id', requireAuth, async (req, res) => {
-  const { name, email, role, password, is_active } = req.body;
+  const { name, email, role, password } = req.body;
   const existing = await getTargetUser(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Utilisateur introuvable' });
 
@@ -170,19 +327,15 @@ router.put('/:id', requireAuth, async (req, res) => {
   const managingTarget = canManage(req.user.role, existing.role);
 
   // Modifier le nom, l'email ou son propre mot de passe reste toujours
-  // possible pour soi-même ; le reste (rôle, activation, mot de passe d'un
-  // tiers) exige un rang strictement supérieur à la cible. Le flag
-  // développeur ne passe pas par ici : voir /developer-access/start et
-  // /confirm (confirmation par code).
+  // possible pour soi-même ; le reste (rôle, mot de passe d'un tiers) exige
+  // un rang strictement supérieur à la cible. Le flag développeur ne passe
+  // pas par ici (voir /developer-access/*), ni le statut du compte (voir
+  // /suspend, /ban/*, /unban/*).
   const wantsRoleChange = role && role !== existing.role;
-  const wantsActiveChange = is_active !== undefined && !!is_active !== !!existing.is_active;
   const wantsEmailChange = email && email !== existing.email;
   const wantsPasswordChangeForOther = password && !isSelf;
 
-  if (wantsActiveChange && is_active === false && isSelf) {
-    return res.status(400).json({ error: 'Vous ne pouvez pas désactiver votre propre compte' });
-  }
-  if ((wantsRoleChange || wantsPasswordChangeForOther || (wantsActiveChange && !isSelf) || (wantsEmailChange && !isSelf)) && !managingTarget) {
+  if ((wantsRoleChange || wantsPasswordChangeForOther || (wantsEmailChange && !isSelf)) && !managingTarget) {
     return res.status(403).json({ error: 'Droits insuffisants pour modifier ce compte' });
   }
   if (wantsRoleChange && !canManage(req.user.role, role)) {
@@ -190,7 +343,6 @@ router.put('/:id', requireAuth, async (req, res) => {
   }
 
   const nextRole = wantsRoleChange ? role : existing.role;
-  const nextActive = wantsActiveChange ? !!is_active : existing.is_active;
   const nextName = name ?? existing.name;
   const nextEmail = wantsEmailChange ? email : existing.email;
 
@@ -198,13 +350,13 @@ router.put('/:id', requireAuth, async (req, res) => {
     if (password) {
       const hash = await bcrypt.hash(password, 10);
       await pool.query(
-        'UPDATE users SET name=?, email=?, role=?, is_active=?, password_hash=? WHERE id=?',
-        [nextName, nextEmail, nextRole, nextActive, hash, req.params.id]
+        'UPDATE users SET name=?, email=?, role=?, password_hash=? WHERE id=?',
+        [nextName, nextEmail, nextRole, hash, req.params.id]
       );
     } else {
       await pool.query(
-        'UPDATE users SET name=?, email=?, role=?, is_active=? WHERE id=?',
-        [nextName, nextEmail, nextRole, nextActive, req.params.id]
+        'UPDATE users SET name=?, email=?, role=? WHERE id=?',
+        [nextName, nextEmail, nextRole, req.params.id]
       );
     }
   } catch (err) {
@@ -226,16 +378,6 @@ router.put('/:id', requireAuth, async (req, res) => {
       action: 'role_changed', targetType: 'user', targetId: req.params.id,
       details: `${existing.name} : ${existing.role} → ${role}`, ip: clientIp(req),
     });
-  }
-  if (wantsActiveChange) {
-    await logActivity({
-      actorId: req.user.id, actorName: req.user.name, actorRole: req.user.role,
-      action: is_active ? 'user_reactivated' : 'user_deactivated', targetType: 'user', targetId: req.params.id,
-      details: existing.name, ip: clientIp(req),
-    });
-    if (!is_active) {
-      await pool.query('UPDATE sessions SET revoked_at = NOW() WHERE user_id = ? AND revoked_at IS NULL', [req.params.id]);
-    }
   }
   if (password) {
     await logActivity({
