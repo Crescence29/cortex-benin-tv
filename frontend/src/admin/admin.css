@@ -1621,6 +1621,19 @@
 
 .dev-card--wide {
   column-span: all;
+  /* Le margin-bottom porté par la dernière carte d'une colonne (voir plus
+     bas) est ignoré par les navigateurs à la frontière d'un column-span:
+     all — la carte suivante démarre donc collée à elle sans cet espace.
+     On force le même espacement ici, directement sur le conteneur qui
+     franchit cette frontière. */
+  margin-top: 22px;
+}
+
+/* Entre deux cartes larges consécutives, ce margin-top s'ajoute cette
+   fois au margin-bottom normal (pas de bug de frontière ici) : le total
+   double l'espacement voulu. On l'annule pour rester à 22px partout. */
+.dev-card--wide + .dev-card--wide {
+  margin-top: 0;
 }
 
 /* Effet verre appliqué à chaque panneau du tableau de bord développeur
