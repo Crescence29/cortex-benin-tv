@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { api } from '../api';
 import { useAuth } from './AuthContext';
 import AdminLayout from './AdminLayout';
@@ -23,6 +23,8 @@ import {
   IconRocket,
   IconSliders,
   IconCode,
+  IconChevronDown,
+  IconLogout,
 } from '../components/Icons';
 
 function formatBytes(bytes) {
@@ -513,6 +515,47 @@ function generatePassword() {
   return Array.from(bytes, (b) => chars[b % chars.length]).join('');
 }
 
+function formatAccessDate(value) {
+  if (!value) return 'Jamais connecté';
+  return new Date(value).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+function AdminSessionsPanel({ userId, onForceLogout }) {
+  const [sessions, setSessions] = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    api.getUserSessions(userId).then(setSessions).catch((err) => setError(err.message));
+  }, [userId]);
+
+  if (error) return <div className="admin-empty">{error}</div>;
+  if (!sessions) return <div className="admin-empty">Chargement…</div>;
+  if (sessions.length === 0) return <div className="admin-empty">Aucune session active.</div>;
+
+  return (
+    <div className="sessions-panel">
+      <table className="data-table data-table--compact">
+        <thead>
+          <tr><th>Adresse IP</th><th>Appareil</th><th>Connecté depuis</th><th>Dernière activité</th></tr>
+        </thead>
+        <tbody>
+          {sessions.map((s) => (
+            <tr key={s.id}>
+              <td>{s.ip_address || '—'}</td>
+              <td className="sessions-panel__ua">{s.user_agent || '—'}</td>
+              <td>{formatAccessDate(s.created_at)}</td>
+              <td>{formatAccessDate(s.last_seen_at)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <button type="button" className="btn btn--sm btn--outline" onClick={onForceLogout}>
+        <IconLogout /> Forcer la déconnexion ({sessions.length} session{sessions.length > 1 ? 's' : ''})
+      </button>
+    </div>
+  );
+}
+
 function AdminAccessPanel() {
   const { user: me } = useAuth();
   const [users, setUsers] = useState([]);
@@ -520,6 +563,8 @@ function AdminAccessPanel() {
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [expandedId, setExpandedId] = useState(null);
+  const [sessionsKey, setSessionsKey] = useState(0);
 
   function load() {
     api.getUsers().then(setUsers);
@@ -572,6 +617,30 @@ function AdminAccessPanel() {
     window.location.href = '/admin';
   }
 
+  async function onDelete(u) {
+    if (!confirm(`Supprimer définitivement le compte de ${u.name} ?`)) return;
+    setBusyId(u.id);
+    setError(null);
+    try {
+      await api.deleteUser(u.id);
+      load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function onForceLogout(u) {
+    if (!confirm(`Déconnecter toutes les sessions actives de ${u.name} ?`)) return;
+    try {
+      await api.forceLogout(u.id);
+      setSessionsKey((k) => k + 1);
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
   return (
     <div className="admin-panel">
       <div className="admin-panel__header">
@@ -607,7 +676,8 @@ function AdminAccessPanel() {
             const manageable = canManage(me?.role, u.role);
             const isBanned = u.status === 'banned';
             return (
-              <tr key={u.id}>
+              <Fragment key={u.id}>
+              <tr>
                 <td>{u.name}</td>
                 <td>{u.email}</td>
                 <td>{roleLabel(u.role)}</td>
@@ -620,6 +690,14 @@ function AdminAccessPanel() {
                 </td>
                 <td>
                   <div className="row-actions row-actions--wrap">
+                    <button
+                      type="button"
+                      className="btn btn--sm btn--outline"
+                      onClick={() => setExpandedId(expandedId === u.id ? null : u.id)}
+                      title="Voir les sessions actives"
+                    >
+                      <IconChevronDown /> Sessions
+                    </button>
                     <button
                       type="button"
                       className="btn btn--sm btn--outline"
@@ -672,9 +750,28 @@ function AdminAccessPanel() {
                         confirmText={() => `Retape-le ci-dessous pour te connecter directement sur le compte de ${u.name}, sans son mot de passe. Action journalisée.`}
                       />
                     )}
+                    {manageable && !isSelf && (
+                      <button
+                        type="button"
+                        className="btn btn--sm btn--outline btn--danger"
+                        onClick={() => onDelete(u)}
+                        disabled={busyId === u.id}
+                        title="Supprimer"
+                      >
+                        <IconTrash /> Supprimer
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
+              {expandedId === u.id && (
+                <tr>
+                  <td colSpan={5}>
+                    <AdminSessionsPanel key={sessionsKey} userId={u.id} onForceLogout={() => onForceLogout(u)} />
+                  </td>
+                </tr>
+              )}
+              </Fragment>
             );
           })}
         </tbody>

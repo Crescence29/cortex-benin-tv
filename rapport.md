@@ -111,6 +111,7 @@ Déploiement actuel (démo) :
 | 11/09 | Ajout du blocage : impossible de modifier son propre accès développeur (bouton masqué + refus serveur) |
 | 11/09 | Correction de l'affichage des tableaux admin sur écran étroit (colonnes invisibles) |
 | 11/09 | Migration `role='editor'` → `role='manager'` (pas `'user'`) pour préserver la capacité de publication directe de Crescence Adjovi |
+| 15/09 | Ajout des boutons "Sessions" (expansion + forcer la déconnexion) et "Supprimer" au panneau "Accès administrateurs" (onglet Développeur) — l'utilisateur avait cru à tort qu'ils avaient été retirés ; en réalité ce panneau ne les avait jamais eus (distinct de "Rôles et utilisateurs"), ajoutés pour uniformiser les deux panneaux |
 | Session précédente | Refonte de la section équipe (carrousel → grille statique) |
 | Session précédente | Remplacement des icônes SVG personnalisées par Lucide React (sauf 5 logos de marque) |
 | Session précédente | Ajout de la carte "Articles à valider" au tableau de bord, puis masquage de la carte "Comptes admin" pour les rôles non-admin |
