@@ -112,6 +112,7 @@ Déploiement actuel (démo) :
 | 11/09 | Correction de l'affichage des tableaux admin sur écran étroit (colonnes invisibles) |
 | 11/09 | Migration `role='editor'` → `role='manager'` (pas `'user'`) pour préserver la capacité de publication directe de Crescence Adjovi |
 | 15/09 | Ajout des boutons "Sessions" (expansion + forcer la déconnexion) et "Supprimer" au panneau "Accès administrateurs" (onglet Développeur) — l'utilisateur avait cru à tort qu'ils avaient été retirés ; en réalité ce panneau ne les avait jamais eus (distinct de "Rôles et utilisateurs"), ajoutés pour uniformiser les deux panneaux |
+| 15/09 | Correction d'un espace manquant avant les cartes larges ("Fichiers et médias" → "Logs et surveillance") du dashboard développeur : `column-span: all` fait perdre le margin-bottom de la carte précédente à cette frontière (bug de rendu du layout multi-colonnes) ; corrigé avec un margin-top compensatoire, neutralisé entre deux cartes larges consécutives pour rester à 22px partout |
 | Session précédente | Refonte de la section équipe (carrousel → grille statique) |
 | Session précédente | Remplacement des icônes SVG personnalisées par Lucide React (sauf 5 logos de marque) |
 | Session précédente | Ajout de la carte "Articles à valider" au tableau de bord, puis masquage de la carte "Comptes admin" pour les rôles non-admin |
