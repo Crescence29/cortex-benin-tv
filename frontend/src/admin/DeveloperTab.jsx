@@ -795,10 +795,12 @@ function ActivityLog() {
   }, [query]);
 
   useEffect(() => {
+    // Dépend de `query` : sans ça, l'intervalle garde la valeur vide capturée
+    // au montage et écrase périodiquement une recherche en cours avec la
+    // liste complète non filtrée.
     const interval = setInterval(() => load(query), 15000);
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [query]);
 
   return (
     <div className="admin-panel">
@@ -1927,10 +1929,12 @@ function LogsPanel() {
   }, [query]);
 
   useEffect(() => {
+    // Dépend de `query` : sans ça, l'intervalle garde la valeur vide capturée
+    // au montage et écrase périodiquement une recherche en cours avec la
+    // liste complète non filtrée.
     const interval = setInterval(() => load(query), 20000);
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [query]);
 
   if (loading && !data) {
     return (
@@ -1968,6 +1972,8 @@ function LogsPanel() {
         <span>Erreurs JS : <strong>{data.counts.erreursJs}</strong></span>
         <span>Erreurs serveur : <strong>{data.counts.erreursServeur}</strong></span>
         <span>Erreurs API : <strong>{data.counts.erreursApi}</strong></span>
+        <span title="Créations, modifications de rôle, bannissements, restaurations… tout ce qui n'est pas une simple connexion">Actions administratives : <strong>{data.counts.actionsAdmin}</strong></span>
+        <span title="Appels API qui modifient des données (POST/PUT/DELETE), depuis le dernier redémarrage du serveur">Requêtes importantes : <strong>{data.counts.requetesImportantes}</strong></span>
         <span className="log-counters__disabled">Erreurs de paiement : N/A</span>
       </div>
 

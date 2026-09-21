@@ -51,44 +51,85 @@ router.get('/activity-logs', requireAuth, requireDeveloper, async (req, res) => 
   res.json(rows);
 });
 
+// Étiquettes lisibles pour les actions d'audit qui apparaissent ici sous la
+// catégorie générique "Action administrative" (tout ce qui n'est pas une des
+// 5 catégories techniques suivies séparément). Reprend les libellés déjà
+// utilisés dans le Journal d'audit pour rester cohérent entre les deux vues.
+const ADMIN_ACTION_LABELS = {
+  user_created: 'Compte créé',
+  role_changed: 'Rôle modifié',
+  email_changed: 'Email modifié',
+  user_deleted: 'Compte supprimé',
+  user_deactivated: 'Compte désactivé',
+  user_reactivated: 'Compte réactivé',
+  user_suspended: 'Compte suspendu',
+  user_banned: 'Compte banni',
+  user_unbanned: 'Compte débanni',
+  impersonation_started: 'Connexion en tant qu\'un autre compte',
+  database_restored: 'Base de données restaurée',
+  metrics_reset: 'Compteurs de métriques réinitialisés',
+  two_factor_enabled: '2FA activée',
+  two_factor_disabled: '2FA désactivée',
+  backup_code_used: 'Code de secours 2FA utilisé',
+  password_reset: 'Mot de passe réinitialisé',
+  developer_access_granted: 'Accès développeur accordé',
+  developer_access_revoked: 'Accès développeur retiré',
+  force_logout: 'Déconnexion forcée',
+  settings_updated: 'Réglages modifiés',
+  live_started: 'Direct démarré',
+  live_stopped: 'Direct arrêté',
+  manual_backup: 'Sauvegarde manuelle',
+};
+
 // Vue "Logs et surveillance" : rassemble en une liste unique, catégorisée et
 // cherchable, tout ce qui peut réellement se produire sur ce service — erreurs
 // serveur (exceptions), erreurs API (réponses en échec par endpoint), erreurs
-// JS côté navigateur, connexions/déconnexions, échecs d'authentification et
-// erreurs de synchronisation des flux RSS. Il n'y a pas de système de paiement
-// dans cette application : la catégorie existe pour respecter le format demandé
-// mais reste honnêtement vide plutôt que de fabriquer de fausses transactions.
+// JS côté navigateur, connexions/déconnexions, échecs d'authentification,
+// actions administratives (tout le reste du journal d'audit), requêtes
+// importantes (appels API qui modifient des données, mesurés en mémoire
+// depuis le démarrage du serveur) et erreurs de synchronisation des flux
+// RSS. Il n'y a pas de système de paiement dans cette application : la
+// catégorie existe pour respecter le format demandé mais reste honnêtement
+// vide plutôt que de fabriquer de fausses transactions.
 router.get('/logs-overview', requireAuth, requireDeveloper, async (req, res) => {
   const { q } = req.query;
   const metrics = getMetrics();
 
-  const categorized = {
+  const technicalCategories = {
     login_success: 'Connexion',
     logout: 'Déconnexion',
     login_failed: 'Échec d\'authentification',
     sync_error: 'Erreur de synchronisation',
     client_js_error: 'Erreur JavaScript',
   };
-  const actions = Object.keys(categorized);
-  const placeholders = actions.map(() => '?').join(',');
+  const technicalActions = Object.keys(technicalCategories);
   const like = q ? `%${q}%` : null;
 
+  // On récupère tout l'historique (pas seulement les 5 catégories
+  // techniques) pour pouvoir aussi afficher les actions administratives
+  // ici, avec la même recherche que les autres catégories.
   const [rows] = await pool.query(
     `SELECT * FROM activity_logs
-     WHERE action IN (${placeholders})
-     ${like ? 'AND (actor_name LIKE ? OR details LIKE ? OR ip_address LIKE ?)' : ''}
+     ${like ? 'WHERE actor_name LIKE ? OR details LIKE ? OR ip_address LIKE ? OR action LIKE ?' : ''}
      ORDER BY created_at DESC LIMIT 300`,
-    like ? [...actions, like, like, like] : actions
+    like ? [like, like, like, like] : []
   );
 
   const events = rows.map((r) => ({
     level: r.action === 'login_failed' || r.action === 'sync_error' || r.action === 'client_js_error' ? 'error' : 'info',
-    category: categorized[r.action] || r.action,
-    label: r.actor_name || 'Visiteur',
-    details: r.details,
+    category: technicalCategories[r.action] || 'Action administrative',
+    label: technicalCategories[r.action] ? (r.actor_name || 'Visiteur') : (ADMIN_ACTION_LABELS[r.action] || r.action),
+    details: technicalCategories[r.action] ? r.details : [r.actor_name, r.details].filter(Boolean).join(' — ') || null,
     ip: r.ip_address,
     at: r.created_at,
   }));
+
+  // "Requêtes importantes" : les appels API qui modifient des données
+  // (POST/PUT/DELETE/PATCH), par opposition aux simples GET — mesurés en
+  // mémoire depuis le démarrage du serveur, comme le reste de l'onglet API.
+  const importantRequestCount = metrics.endpointStats
+    .filter((s) => /^(POST|PUT|DELETE|PATCH)\s/.test(s.route))
+    .reduce((sum, s) => sum + s.count, 0);
 
   const serverErrors = metrics.recentErrors
     .filter((e) => !q || `${e.message} ${e.path}`.toLowerCase().includes(q.toLowerCase()))
@@ -129,6 +170,8 @@ router.get('/logs-overview', requireAuth, requireDeveloper, async (req, res) => 
       erreursJs: rows.filter((r) => r.action === 'client_js_error').length,
       erreursServeur: serverErrors.length,
       erreursApi: apiErrors.length,
+      actionsAdmin: rows.filter((r) => !technicalCategories[r.action]).length,
+      requetesImportantes: importantRequestCount,
     },
     paymentNote: "Aucun système de paiement n'existe sur ce site : cette catégorie ne peut donc produire aucune erreur.",
   });
