@@ -39,7 +39,7 @@ export default function Projects() {
           <div className="pj-grid">
             {projects.map((p) => (
               <Link to={`/projets/${p.slug}`} className="pj-card" key={p.id}>
-                <div className="pj-card__cover">
+                <div className={'pj-card__cover' + (p.cover_image_url ? ' pj-card__cover--has-image' : '')}>
                   {p.cover_image_url ? (
                     <img src={p.cover_image_url} alt={p.title} />
                   ) : (

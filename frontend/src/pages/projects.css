@@ -170,10 +170,24 @@
   overflow: hidden;
 }
 
+/* Les affiches/flyers sont conçus sur un fond blanc et pensés pour être vus
+   en entier (texte proche des bords) : un fond sombre derrière rendrait le
+   texte noir illisible, et un recadrage (object-fit: cover) couperait des
+   éléments du visuel. On garde donc le fond blanc d'origine et on montre
+   l'affiche complète plutôt que de la recadrer. */
+.pj-card__cover--has-image {
+  background: #fff;
+}
+
 .pj-card__cover img {
   width: 100%;
   height: 160px;
   object-fit: cover;
+}
+
+.pj-card__cover--has-image img {
+  object-fit: contain;
+  padding: 10px;
 }
 
 .pj-card__cover-placeholder {
