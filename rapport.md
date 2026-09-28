@@ -38,7 +38,7 @@ Déploiement actuel (démo) :
 ### Site public
 - Page d'accueil, catégories, articles, vidéos/émissions, podcasts, direct, grille TV
 - Pages À propos, Contact, Mentions légales, Confidentialité, Recherche
-- **Projets/Campagnes** (`/projets`, `/projets/:slug`) : section dédiée aux campagnes de sensibilisation type Octobre Rose / Novembre Bleu — titre, période, description, galerie d'affiches/flyers (avec lightbox), vidéos réalisées (lues nativement ou lien externe selon le type d'URL). Gérable depuis `/admin/projets`. Vidéos en URLs indépendantes du système Vidéos existant (choix explicite du client)
+- **Projets/Campagnes** (`/projets`, `/projets/:slug`) : section dédiée aux campagnes de sensibilisation type Octobre Rose / Novembre Bleu — titre, période, description, galerie d'affiches/flyers (avec lightbox), vidéos réalisées (lues nativement ou lien externe selon le type d'URL). Gérable depuis `/admin/projets`, accessible à tout compte connecté (y compris journaliste) comme Articles/Vidéos — aucune restriction de rôle. Vidéos en URLs indépendantes du système Vidéos existant (choix explicite du client). Description en texte libre avec sauts de ligne préservés (`white-space: pre-line`) pour permettre une structure "C'est quoi / Objectif / Depuis quand / Que faire" sans éditeur riche. Deux fiches réelles créées en production : Octobre Rose et Novembre Bleu (contenu informatif factuel, sans affiches/vidéos pour l'instant — à ajouter par la rédaction)
 - Newsletter avec validation d'email réelle (vérification DNS/MX, rejet des domaines invalides)
 - Section équipe (grille statique avec animations d'entrée)
 - Icônes Lucide React sur tout le site (remplacement des SVG personnalisés)
