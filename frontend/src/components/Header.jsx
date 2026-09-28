@@ -35,6 +35,7 @@ export default function Header() {
     { label: t('international'), to: '/rubrique/international' },
     { label: t('culture'), to: '/rubrique/culture' },
     { label: t('emission'), to: '/emissions' },
+    { label: 'Projets', to: '/projets' },
     { label: t('musique'), to: '/rubrique/musique' },
     { label: t('sports'), to: '/rubrique/sports' },
     { label: t('jeunesse'), to: '/rubrique/jeunesse' },

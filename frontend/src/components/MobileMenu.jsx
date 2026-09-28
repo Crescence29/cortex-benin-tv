@@ -4,7 +4,7 @@ import { api } from '../api';
 import { useLanguage } from '../i18n/LanguageContext';
 import ThemeToggle from './ThemeToggle';
 import LanguageSelect from './LanguageSelect';
-import { IconMic, IconHeadphones, IconTv } from './Icons';
+import { IconMic, IconHeadphones, IconTv, IconTarget } from './Icons';
 
 function CloseIcon(props) {
   return (
@@ -16,6 +16,7 @@ function CloseIcon(props) {
 
 const QUICK_LINKS = [
   { label: 'Nos émissions', to: '/emissions', icon: IconMic },
+  { label: 'Projets', to: '/projets', icon: IconTarget },
   { label: 'Local', to: '/rubrique/local' },
   { label: 'International', to: '/rubrique/international' },
   { label: 'Grille des programmes', to: '/grille-tv', icon: IconTv },

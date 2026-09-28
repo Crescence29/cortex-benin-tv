@@ -24,6 +24,7 @@ import {
   IconCode,
   IconMail,
   IconShield,
+  IconTarget,
 } from '../components/Icons';
 import './admin.css';
 
@@ -39,6 +40,7 @@ const NAV_GROUPS = [
       { to: '/admin/videos/new', label: 'Vidéos', icon: IconVideo },
       { to: '/admin/articles?category=emission', label: 'Émissions', icon: IconMic },
       { to: '/admin/articles?category=podcasts', label: 'Podcasts', icon: IconHeadphones },
+      { to: '/admin/projets', label: 'Projets', icon: IconTarget },
       { to: '/admin/planning', label: 'Planning', icon: IconCalendar },
     ],
   },

@@ -12,6 +12,8 @@ import Videos from './pages/Videos';
 import Podcasts from './pages/Podcasts';
 import LocalLive from './pages/LocalLive';
 import Emissions from './pages/Emissions';
+import Projects from './pages/Projects';
+import ProjectDetail from './pages/ProjectDetail';
 import Video from './pages/Video';
 import Live from './pages/Live';
 import TvGrid from './pages/TvGrid';
@@ -39,6 +41,7 @@ import Media from './admin/Media';
 import Settings from './admin/Settings';
 import FooterManager from './admin/FooterManager';
 import Announcements from './admin/Announcements';
+import AdminProjects from './admin/Projects';
 import Messages from './admin/Messages';
 import Newsletter from './admin/Newsletter';
 import DeveloperTab from './admin/DeveloperTab';
@@ -88,6 +91,7 @@ export default function App() {
         <Route path="/admin/parametres" element={<Protected><Settings /></Protected>} />
         <Route path="/admin/footer" element={<Protected><FooterManager /></Protected>} />
         <Route path="/admin/annonces" element={<Protected><Announcements /></Protected>} />
+        <Route path="/admin/projets" element={<Protected><AdminProjects /></Protected>} />
         <Route path="/admin/messages" element={<Protected><Messages /></Protected>} />
         <Route path="/admin/newsletter" element={<Protected><Newsletter /></Protected>} />
         <Route path="/admin/developpeur" element={<Protected><DeveloperTab /></Protected>} />
@@ -105,6 +109,8 @@ export default function App() {
                   <Route path="/podcasts" element={<Podcasts />} />
                   <Route path="/en-direct-local" element={<LocalLive />} />
                   <Route path="/emissions" element={<Emissions />} />
+                  <Route path="/projets" element={<Projects />} />
+                  <Route path="/projets/:slug" element={<ProjectDetail />} />
                   <Route path="/video/:slug" element={<Video />} />
                   <Route path="/direct" element={<Live />} />
                   <Route path="/grille-tv" element={<TvGrid />} />

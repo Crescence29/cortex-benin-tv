@@ -821,6 +821,47 @@
   font-weight: 600;
 }
 
+.project-repeatable {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.project-repeatable__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.project-repeatable__header span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.project-repeatable__row {
+  display: grid;
+  grid-template-columns: 2fr 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.project-repeatable__row input {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  background: var(--surface);
+  color: var(--text);
+}
+
 .admin-form__success {
   color: #1b7a45;
   font-weight: 600;
