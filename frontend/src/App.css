@@ -855,10 +855,10 @@
   display: grid;
   grid-template-columns: 2fr 1fr auto;
   gap: 8px;
-  align-items: center;
+  align-items: start;
 }
 
-.project-repeatable__row input {
+.project-repeatable__row > input {
   padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -866,6 +866,85 @@
   font-size: 0.9rem;
   background: var(--surface);
   color: var(--text);
+  align-self: center;
+}
+
+.project-repeatable__row > .btn--danger {
+  align-self: center;
+}
+
+/* Sélecteur de média (upload réel + galerie des fichiers déjà envoyés pour
+   ce projet), utilisé pour les champs image/vidéo des projets. */
+.media-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.media-picker__row {
+  display: flex;
+  gap: 6px;
+}
+
+.media-picker__row input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.media-picker__panel {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.media-picker__upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  cursor: pointer;
+}
+
+.media-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.media-picker__thumb {
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--bg);
+  aspect-ratio: 1;
+}
+
+.media-picker__thumb img,
+.media-picker__thumb video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.media-picker__thumb.is-selected {
+  border-color: var(--red);
 }
 
 .admin-form__success {

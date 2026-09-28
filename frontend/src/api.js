@@ -97,6 +97,24 @@ export const api = {
   createPartner: (data) => request('/partners', { method: 'POST', body: JSON.stringify(data) }),
   updatePartner: (id, data) => request(`/partners/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deletePartner: (id) => request(`/partners/${id}`, { method: 'DELETE' }),
+  uploadMedia: (file, folder) => {
+    const token = localStorage.getItem('cortex_token');
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('folder', folder);
+    return fetch(`${API_URL}/media/upload`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    }).then(async (res) => {
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Erreur ${res.status}`);
+      }
+      return res.json();
+    });
+  },
+  getMediaGallery: (folder, type) => request(`/media/gallery?folder=${encodeURIComponent(folder)}&type=${type}`),
   getProjects: () => request('/projects'),
   getProject: (slug) => request(`/projects/${slug}`),
   adminGetProjects: () => request('/projects/admin/all'),

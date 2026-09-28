@@ -1,7 +1,20 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import AdminLayout from './AdminLayout';
+import MediaPicker from './MediaPicker';
 import { IconTrash, IconPlus, IconPencil, IconImage, IconVideo } from '../components/Icons';
+
+// Slug simplifié côté client, juste pour nommer le "dossier" Cloudinary du
+// projet en cours d'édition (avant même qu'il ait un id/slug définitif côté
+// serveur) — les fichiers déjà envoyés restent retrouvables tant que le
+// titre ne change pas radicalement pendant la création.
+function slugifyClient(value) {
+  return (value || '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'nouveau-projet';
+}
 
 const emptyForm = {
   title: '',
@@ -14,7 +27,7 @@ const emptyForm = {
   videos: [],
 };
 
-function RepeatableUrlList({ label, icon: Icon, items, urlKey, labelKey, urlPlaceholder, labelPlaceholder, onChange }) {
+function RepeatableUrlList({ label, icon: Icon, items, urlKey, labelKey, urlPlaceholder, labelPlaceholder, onChange, folder, mediaType }) {
   function updateItem(i, field, value) {
     const next = items.slice();
     next[i] = { ...next[i], [field]: value };
@@ -38,11 +51,12 @@ function RepeatableUrlList({ label, icon: Icon, items, urlKey, labelKey, urlPlac
       {items.length === 0 && <p className="admin-empty" style={{ padding: '8px 0' }}>Aucun élément pour le moment.</p>}
       {items.map((item, i) => (
         <div className="project-repeatable__row" key={i}>
-          <input
-            value={item[urlKey] || ''}
-            onChange={(e) => updateItem(i, urlKey, e.target.value)}
+          <MediaPicker
+            folder={folder}
+            type={mediaType}
+            value={item[urlKey]}
+            onChange={(v) => updateItem(i, urlKey, v)}
             placeholder={urlPlaceholder}
-            required
           />
           <input
             value={item[labelKey] || ''}
@@ -157,7 +171,13 @@ export default function Projects() {
         </label>
         <label>
           Image de couverture (optionnel)
-          <input value={form.cover_image_url} onChange={(e) => setForm({ ...form, cover_image_url: e.target.value })} placeholder="https://..." />
+          <MediaPicker
+            folder={slugifyClient(form.title)}
+            type="image"
+            value={form.cover_image_url}
+            onChange={(v) => setForm({ ...form, cover_image_url: v })}
+            placeholder="https://..."
+          />
         </label>
         <label>
           Ordre d'affichage
@@ -173,6 +193,8 @@ export default function Projects() {
           urlPlaceholder="https://... (image)"
           labelPlaceholder="Légende (optionnel)"
           onChange={(images) => setForm({ ...form, images })}
+          folder={slugifyClient(form.title)}
+          mediaType="image"
         />
 
         <RepeatableUrlList
@@ -184,6 +206,8 @@ export default function Projects() {
           urlPlaceholder="https://... (vidéo)"
           labelPlaceholder="Titre (optionnel)"
           onChange={(videos) => setForm({ ...form, videos })}
+          folder={slugifyClient(form.title)}
+          mediaType="video"
         />
 
         <label className="admin-form__checkbox">
