@@ -816,6 +816,12 @@
   gap: 8px;
 }
 
+.admin-form__hint {
+  font-weight: 400;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
 .admin-form__error {
   color: var(--red-bright);
   font-weight: 600;

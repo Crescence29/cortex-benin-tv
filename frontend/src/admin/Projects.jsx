@@ -148,9 +148,12 @@ export default function Projects() {
           <textarea
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
-            rows={3}
-            placeholder="Sensibilisation au dépistage du cancer du sein..."
+            rows={10}
+            placeholder={"C'est quoi ce projet ?\n\nQuel est l'objectif ?\n\nDepuis quand existe-t-il ?\n\nQue doit-on faire / comment participer ?"}
           />
+          <span className="admin-form__hint">
+            Texte libre. Laissez une ligne vide entre les paragraphes (ex: "C'est quoi", "Objectif", "Depuis quand", "Que faire") — les sauts de ligne sont conservés tels quels sur la page publique.
+          </span>
         </label>
         <label>
           Image de couverture (optionnel)
