@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import AdminLayout from './AdminLayout';
+import MediaPicker from './MediaPicker';
 import { IconTrash, IconPlus } from '../components/Icons';
 
 const emptyPartner = { name: '', logo_url: '', website_url: '', bg_color: '#ffffff', sort_order: 0 };
 const emptyShow = { name: '', logo_url: '', bg_color: '#ffffff', sort_order: 0, description: '', schedule_label: '', category_id: '' };
 
-function LogoManager({ title, hint, items, load, emptyForm, createFn, updateFn, deleteFn, hasWebsite, hasShowFields, categories }) {
+function LogoManager({ title, hint, items, load, emptyForm, createFn, updateFn, deleteFn, hasWebsite, hasShowFields, categories, folder }) {
   const [form, setForm] = useState(emptyForm);
 
   async function onAdd(e) {
@@ -39,12 +40,12 @@ function LogoManager({ title, hint, items, load, emptyForm, createFn, updateFn, 
           <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
         </label>
         <label>
-          URL du logo {hasShowFields ? '(optionnel — le nom s\'affiche en attendant)' : '(ex. /partenaires/mon-logo.png)'}
-          <input
+          Logo {hasShowFields ? '(optionnel — le nom s\'affiche en attendant)' : ''}
+          <MediaPicker
+            folder={folder}
+            type="image"
             value={form.logo_url}
-            onChange={(e) => setForm({ ...form, logo_url: e.target.value })}
-            placeholder={hasShowFields ? '/emissions/mon-logo.png' : undefined}
-            required={!hasShowFields}
+            onChange={(v) => setForm({ ...form, logo_url: v })}
           />
         </label>
         {hasWebsite && (
@@ -157,7 +158,7 @@ export default function FooterManager() {
 
       <LogoManager
         title="Nos émissions"
-        hint="Déposez d'abord le fichier dans frontend/public/emissions/, puis indiquez son chemin ici."
+        hint="Envoyez le logo depuis votre appareil, ou resélectionnez-en un déjà envoyé."
         items={shows}
         load={loadShows}
         emptyForm={emptyShow}
@@ -167,17 +168,19 @@ export default function FooterManager() {
         hasWebsite={false}
         hasShowFields
         categories={categories}
+        folder="logos-emissions"
       />
 
       <LogoManager
         title="Nos partenaires"
-        hint="Déposez d'abord le fichier dans frontend/public/partenaires/, puis indiquez son chemin ici."
+        hint="Envoyez le logo depuis votre appareil, ou resélectionnez-en un déjà envoyé."
         items={partners}
         load={loadPartners}
         emptyForm={emptyPartner}
         createFn={api.createPartner}
         updateFn={api.updatePartner}
         deleteFn={api.deletePartner}
+        folder="logos-partenaires"
         hasWebsite
       />
     </AdminLayout>

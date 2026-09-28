@@ -3,6 +3,8 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { api } from '../api';
 import { useLanguage } from '../i18n/LanguageContext';
 import AdminLayout from './AdminLayout';
+import MediaPicker from './MediaPicker';
+import { slugifyClient } from '../lib/slugifyClient';
 
 const emptyBase = {
   video_url: '',
@@ -60,6 +62,7 @@ export default function VideoForm() {
 
   const current = translations[activeLang] || emptyTranslation;
   const writtenLangs = allLanguages.filter((l) => translations[l.code]);
+  const mediaFolder = isEdit ? `videos/${id}` : `videos/${slugifyClient(current.title)}`;
 
   function updateBase(field, value) {
     setBase((b) => ({ ...b, [field]: value }));
@@ -177,12 +180,22 @@ export default function VideoForm() {
           <textarea value={current.description} onChange={(e) => updateCurrent('description', e.target.value)} rows={3} />
         </label>
         <label>
-          URL de la vidéo
-          <input value={base.video_url} onChange={(e) => updateBase('video_url', e.target.value)} required />
+          Vidéo
+          <MediaPicker
+            folder={mediaFolder}
+            type="video"
+            value={base.video_url}
+            onChange={(v) => updateBase('video_url', v)}
+          />
         </label>
         <label>
-          Miniature (URL)
-          <input value={base.thumbnail} onChange={(e) => updateBase('thumbnail', e.target.value)} />
+          Miniature
+          <MediaPicker
+            folder={mediaFolder}
+            type="image"
+            value={base.thumbnail}
+            onChange={(v) => updateBase('thumbnail', v)}
+          />
         </label>
         <label>
           Émission (optionnel)

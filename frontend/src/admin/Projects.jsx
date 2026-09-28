@@ -2,19 +2,8 @@ import { useEffect, useState } from 'react';
 import { api } from '../api';
 import AdminLayout from './AdminLayout';
 import MediaPicker from './MediaPicker';
+import { slugifyClient } from '../lib/slugifyClient';
 import { IconTrash, IconPlus, IconPencil, IconImage, IconVideo } from '../components/Icons';
-
-// Slug simplifié côté client, juste pour nommer le "dossier" Cloudinary du
-// projet en cours d'édition (avant même qu'il ait un id/slug définitif côté
-// serveur) — les fichiers déjà envoyés restent retrouvables tant que le
-// titre ne change pas radicalement pendant la création.
-function slugifyClient(value) {
-  return (value || '')
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '') || 'nouveau-projet';
-}
 
 const emptyForm = {
   title: '',

@@ -3,6 +3,8 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from './AuthContext';
 import RichTextEditor from './RichTextEditor';
+import MediaPicker from './MediaPicker';
+import { slugifyClient } from '../lib/slugifyClient';
 import { IconChevronDown } from '../components/Icons';
 import './editor.css';
 
@@ -87,6 +89,9 @@ export default function ArticleForm() {
 
   const current = translations[activeLang] || emptyTranslation;
   const writtenLangs = allLanguages.filter((l) => translations[l.code]);
+  // Dossier Cloudinary pour cet article : l'id une fois qu'il existe (stable
+  // même si le titre change ensuite), sinon un slug provisoire du titre.
+  const mediaFolder = isEdit ? `articles/${id}` : `articles/${slugifyClient(current.title)}`;
 
   function updateBase(field, value) {
     setBase((b) => ({ ...b, [field]: value }));
@@ -277,16 +282,34 @@ export default function ArticleForm() {
         {openPanel === 'image' && (
           <div className="editor-panel">
             <label>
-              Image principale (URL)
-              <input value={base.cover_image} onChange={(e) => updateBase('cover_image', e.target.value)} />
+              Image principale
+              <MediaPicker
+                folder={mediaFolder}
+                type="image"
+                value={base.cover_image}
+                onChange={(v) => updateBase('cover_image', v)}
+              />
             </label>
             <label>
               Galerie d'images (une URL par ligne)
               <textarea value={galleryInput} onChange={(e) => setGalleryInput(e.target.value)} rows={3} placeholder={'https://...\nhttps://...'} />
+              <MediaPicker
+                folder={mediaFolder}
+                type="image"
+                hideUrlInput
+                closeOnPick={false}
+                onChange={(url) => setGalleryInput((v) => (v ? `${v}\n${url}` : url))}
+              />
             </label>
             <label>
-              Vidéo associée (URL, optionnel)
-              <input value={base.video_url} onChange={(e) => updateBase('video_url', e.target.value)} placeholder="https://..." />
+              Vidéo associée (optionnel)
+              <MediaPicker
+                folder={mediaFolder}
+                type="video"
+                value={base.video_url}
+                onChange={(v) => updateBase('video_url', v)}
+                placeholder="https://..."
+              />
             </label>
           </div>
         )}
