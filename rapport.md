@@ -1,7 +1,7 @@
 # Rapport de suivi — Cortex Bénin TV
 
 > Fichier vivant : mis à jour au fur et à mesure de l'avancement du projet.
-> Dernière mise à jour : **14 septembre 2026**
+> Dernière mise à jour : **29 septembre 2026**
 
 **Nouveau dans cette mise à jour :** hiérarchie de rôles à 4 niveaux avec statuts de compte à 3 états (actif/suspendu/banni) et connexion développeur sans mot de passe (§2), section "Logs et surveillance" complète (§2), gestion de l'API (§2), gestion de la base de données avec sauvegarde/restauration (§2), gestion des fichiers et médias (§2 — constat important : ce site n'a aucun système d'upload, voir détail ci-dessous).
 
@@ -115,6 +115,11 @@ Déploiement actuel (démo) :
 | 15/09 | Ajout des boutons "Sessions" (expansion + forcer la déconnexion) et "Supprimer" au panneau "Accès administrateurs" (onglet Développeur) — l'utilisateur avait cru à tort qu'ils avaient été retirés ; en réalité ce panneau ne les avait jamais eus (distinct de "Rôles et utilisateurs"), ajoutés pour uniformiser les deux panneaux |
 | 15/09 | Correction d'un espace manquant avant les cartes larges ("Fichiers et médias" → "Logs et surveillance") du dashboard développeur : `column-span: all` fait perdre le margin-bottom de la carte précédente à cette frontière (bug de rendu du layout multi-colonnes) ; corrigé avec un margin-top compensatoire, neutralisé entre deux cartes larges consécutives pour rester à 22px partout |
 | 21/09 | Ajout de "Actions administratives" et "Requêtes importantes" au panneau "Logs et surveillance" (catégories prévues dans la spec initiale mais absentes) — actions admin = tout le journal d'audit hors les 5 catégories déjà suivies, requêtes importantes = appels API mutants (POST/PUT/DELETE/PATCH) mesurés en mémoire. En testant la recherche, découverte et correction d'un bug préexistant : l'auto-rafraîchissement (toutes les 15-20s) écrasait un filtre de recherche actif avec la liste complète (closure figée sur la valeur vide au montage) |
+| 28/09 | **Nouvelle section "Projets / Campagnes"** (ex: Octobre Rose, Novembre Bleu) : titre, période, description longue (sauts de ligne préservés), galerie d'affiches/flyers, vidéos réalisées. Page publique `/projets` + `/projets/:slug`, gestion depuis `/admin/projets` (accessible à tout compte connecté, comme Articles/Vidéos). Deux fiches réelles créées en production avec contenu factuel |
+| 28/09 | **Vrai système d'upload de fichiers** (Cloudinary) : jusque-là il fallait coller une URL externe pour toute image/vidéo. Ajout d'un bouton "Galerie" (upload réel + resélection d'un fichier déjà envoyé, organisé par dossier) sur Projets, Articles (image principale, galerie, vidéo), Vidéos (fichier + miniature), Footer (logos émissions/partenaires) |
+| 28-29/09 | **Durcissement de la sécurité** suite à un scan externe (OWASP ZAP + Mozilla HTTP Observatory) : ajout des en-têtes manquants sur le site public (CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy via `vercel.json`), retrait de `unsafe-inline` du style-src (confirmé inutile : React n'utilise jamais l'attribut HTML `style`), et CSP minimale (`default-src 'none'`) sur le backend qui ne sert que du JSON. Score final : **A+ / 120 / 100** sur Mozilla HTTP Observatory |
+| 29/09 | Ajout de la **validation groupée des articles** : cases à cocher + "tout sélectionner" dans "Gestion des articles", barre d'action pour choisir la catégorie et publier plusieurs brouillons "À valider" d'un coup. Création du compte de rédaction "CORTEX BENIN TV" (byline, ne se connecte jamais) utilisé comme auteur par la validation groupée et par défaut pour les brouillons importés depuis les flux RSS (au lieu du premier compte admin trouvé) |
+| 29/09 | **Audit visuel du site public** (à la demande du client) et corrections en cours, traitées une par une : (1) images manquantes/cassées — nouveau composant `SafeImage` qui retombe sur un remplacement stylé au lieu de l'icône cassée du navigateur, appliqué à toutes les pages publiques ; (2-3) chargement paresseux des images (`loading="lazy"`, sauf l'image "à la une" en `eager`) et animation d'apparition en fondu échelonnée sur les grilles de cartes (accueil, catégories, recherche, vidéos, projets, émissions, podcasts, direct local), respecte `prefers-reduced-motion`. **Reste à faire** : (4) skeleton loaders à la place du texte "Chargement…", (5) indice visuel sur la barre de catégories qui défile horizontalement, (6) revoir les photos génériques/stock sur certaines vidéos |
 | Session précédente | Refonte de la section équipe (carrousel → grille statique) |
 | Session précédente | Remplacement des icônes SVG personnalisées par Lucide React (sauf 5 logos de marque) |
 | Session précédente | Ajout de la carte "Articles à valider" au tableau de bord, puis masquage de la carte "Comptes admin" pour les rôles non-admin |
@@ -144,7 +149,11 @@ Déploiement actuel (démo) :
 
 ## 5. Fonctionnalités restantes à développer
 
-- [ ] **Vrai système d'upload de fichiers** avec stockage externe (ex: Cloudinary, S3) — demandé par l'utilisateur suite au constat qu'aucun upload n'existe actuellement (images/vidéos = URL externes collées manuellement) ; nécessite de choisir un fournisseur de stockage avant de commencer
+- [x] ~~Vrai système d'upload de fichiers avec stockage externe~~ — fait le 28/09 (Cloudinary), voir §3
+- [ ] **Audit visuel du site public (suite)** — points 4 à 6 identifiés le 29/09, restants après (1) images cassées et (2-3) lazy-loading/animations déjà corrigés :
+  - [ ] Skeleton loaders à la place du texte "Chargement…" (Home, Videos, Category en priorité)
+  - [ ] Indice visuel (flèche/dégradé) sur la barre de catégories qui défile horizontalement, pour signaler qu'elle est scrollable
+  - [ ] Revoir les photos génériques/stock utilisées sur certaines vidéos (cassent l'identité visuelle)
 - [ ] Gérer les endpoints/routes d'`articles.js` et `videos.js` : gate déjà en place pour `canPublishDirectly`, à re-vérifier après tout futur changement de hiérarchie
 - [ ] Application de la partie "Gestion de l'API" — vérifier long terme la pertinence de suivre plus finement les erreurs 4xx/5xx par route
 - [ ] Migration vers un hébergement définitif (Hostinger pressenti) pour lever les limitations Render/Aiven gratuits (veille, cron horaire fiable)
