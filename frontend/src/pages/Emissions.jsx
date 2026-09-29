@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { IconTv, IconSearch, IconCalendar } from '../components/Icons';
+import SafeImage from '../components/SafeImage';
 import './emissions.css';
 
 export default function Emissions() {
@@ -80,7 +81,7 @@ export default function Emissions() {
             {filtered.map((s) => (
               <div className="em-card" key={s.id}>
                 <div className="em-card__logo" style={{ background: s.logo_url ? s.bg_color : undefined }}>
-                  {s.logo_url ? <img src={s.logo_url} alt={s.name} /> : <span className="em-card__text-badge">{s.name}</span>}
+                  <SafeImage src={s.logo_url} alt={s.name} placeholder={<span className="em-card__text-badge">{s.name}</span>} />
                 </div>
                 <div className="em-card__body">
                   {s.category_name && <span className="em-card__category">{s.category_name}</span>}

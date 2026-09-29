@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { api } from '../api';
 import { useLanguage } from '../i18n/LanguageContext';
 import { IconEye, IconPlay, IconMail } from '../components/Icons';
+import SafeImage from '../components/SafeImage';
 import { useSEO } from '../lib/useSEO';
 import './category.css';
 
@@ -128,7 +129,7 @@ export default function Category() {
             {hero && (
               <Link to={`/article/${hero.slug}`} className="cat-hero-card">
                 <span className="cat-hero-card__badge">À la une</span>
-                {hero.cover_image ? <img src={hero.cover_image} alt={hero.title} /> : <div className="cat-hero-card__placeholder" />}
+                <SafeImage src={hero.cover_image} alt={hero.title} placeholderClassName="cat-hero-card__placeholder" />
                 <div className="cat-hero-card__overlay" />
                 <div className="cat-hero-card__body">
                   <span className="cat-hero-card__kicker">{(hero.tags && hero.tags[0]?.name) || categoryName} | {formatDate(hero.published_at)}</span>
@@ -161,7 +162,7 @@ export default function Category() {
               {listArticles.map((a) => (
                 <Link to={`/article/${a.slug}`} key={a.id} className="cat-row">
                   <span className="cat-row__media">
-                    {a.cover_image ? <img src={a.cover_image} alt={a.title} /> : <span className="cat-row__placeholder" />}
+                    <SafeImage src={a.cover_image} alt={a.title} placeholderClassName="cat-row__placeholder" />
                   </span>
                   <span className="cat-row__body">
                     <span className="cat-row__meta">
@@ -188,7 +189,7 @@ export default function Category() {
                     <li key={a.id}>
                       <Link to={`/article/${a.slug}`} className="cat-side-item">
                         <span className="cat-side-item__media">
-                          {a.cover_image ? <img src={a.cover_image} alt={a.title} /> : <span className="cat-side-item__placeholder" />}
+                          <SafeImage src={a.cover_image} alt={a.title} placeholderClassName="cat-side-item__placeholder" />
                         </span>
                         <span>
                           <span className="cat-side-item__kicker">{(a.tags && a.tags[0]?.name) || categoryName}</span>
@@ -209,7 +210,7 @@ export default function Category() {
                   {videos.map((v) => (
                     <Link to={`/video/${v.slug}`} key={v.id} className="cat-side-video">
                       <span className="cat-side-video__media">
-                        {v.thumbnail ? <img src={v.thumbnail} alt={v.title} /> : <span className="cat-side-video__placeholder" />}
+                        <SafeImage src={v.thumbnail} alt={v.title} placeholderClassName="cat-side-video__placeholder" />
                         <span className="cat-side-video__play"><IconPlay /></span>
                       </span>
                       <span className="cat-side-video__title">{v.title}</span>

@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { useLanguage } from '../i18n/LanguageContext';
 import { IconSearch, IconEye } from '../components/Icons';
+import SafeImage from '../components/SafeImage';
 import './search.css';
 
 function formatDate(iso) {
@@ -59,7 +60,7 @@ export default function Search() {
           {results.map((a) => (
             <Link to={`/article/${a.slug}`} key={a.id} className="src-card">
               <div className="src-card__media">
-                {a.cover_image ? <img src={a.cover_image} alt={a.title} /> : <div className="src-card__placeholder" />}
+                <SafeImage src={a.cover_image} alt={a.title} placeholderClassName="src-card__placeholder" />
               </div>
               <div className="src-card__body">
                 <span className="src-card__kicker">{a.category_name}</span>

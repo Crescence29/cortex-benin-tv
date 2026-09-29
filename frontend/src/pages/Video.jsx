@@ -4,6 +4,7 @@ import { api } from '../api';
 import { useLanguage } from '../i18n/LanguageContext';
 import { IconEye, IconFacebook, IconWhatsApp, IconLink } from '../components/Icons';
 import AudioPlayer, { isAudioUrl } from '../components/AudioPlayer';
+import SafeImage from '../components/SafeImage';
 import { useSEO } from '../lib/useSEO';
 import './video.css';
 
@@ -109,7 +110,7 @@ export default function Video() {
             {related.map((v) => (
               <Link to={`/video/${v.slug}`} key={v.id} className="vid-related__card">
                 <div className="vid-related__media">
-                  {v.thumbnail ? <img src={v.thumbnail} alt={v.title} /> : <div className="vid-related__placeholder" />}
+                  <SafeImage src={v.thumbnail} alt={v.title} placeholderClassName="vid-related__placeholder" />
                 </div>
                 {v.program && <span className="vid-related__program">{v.program}</span>}
                 <h3>{v.title}</h3>

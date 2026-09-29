@@ -14,6 +14,7 @@ import {
   IconUsers,
   IconMic,
 } from '../components/Icons';
+import SafeImage from '../components/SafeImage';
 import './podcasts.css';
 
 const LISTEN_CATEGORIES = ['podcasts', 'emission', 'musique'];
@@ -39,7 +40,7 @@ function EpisodeCard({ item }) {
   return (
     <Link to={to} className="pod-card">
       <div className="pod-card__media">
-        {image ? <img src={image} alt={item.title} /> : <div className="pod-card__placeholder"><IconHeadphones /></div>}
+        <SafeImage src={image} alt={item.title} placeholder={<div className="pod-card__placeholder"><IconHeadphones /></div>} />
         <span className="pod-card__play"><IconPlay /></span>
       </div>
       <div className="pod-card__body">

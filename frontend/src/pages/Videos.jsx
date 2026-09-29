@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { IconReplay, IconSearch, IconEye, IconGrid } from '../components/Icons';
+import SafeImage from '../components/SafeImage';
 import './videos.css';
 
 const RECENT_KEY = 'cortex_recent_videos';
@@ -45,7 +46,7 @@ function VideoTile({ video }) {
   return (
     <Link to={`/video/${video.slug}`} className="rp-tile" onClick={() => pushRecent(video.id)}>
       <div className="rp-tile__media">
-        {video.thumbnail ? <img src={video.thumbnail} alt={video.title} /> : <div className="rp-tile__placeholder" />}
+        <SafeImage src={video.thumbnail} alt={video.title} placeholderClassName="rp-tile__placeholder" />
         <span className="rp-tile__play"><IconReplay /></span>
         {duration && <span className="rp-tile__duration">{duration}</span>}
       </div>

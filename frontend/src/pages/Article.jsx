@@ -4,6 +4,7 @@ import { api } from '../api';
 import { useLanguage } from '../i18n/LanguageContext';
 import { IconEye, IconFacebook, IconWhatsApp, IconLink } from '../components/Icons';
 import { sanitizeHtml } from '../lib/sanitize';
+import SafeImage from '../components/SafeImage';
 import { useSEO } from '../lib/useSEO';
 import './article.css';
 
@@ -112,7 +113,7 @@ export default function Article() {
 
         {article.cover_image && (
           <div className="art-cover">
-            <img src={article.cover_image} alt={article.title} />
+            <SafeImage src={article.cover_image} alt={article.title} />
           </div>
         )}
 
@@ -138,7 +139,7 @@ export default function Article() {
             {related.map((a) => (
               <Link to={`/article/${a.slug}`} key={a.id} className="art-related__card">
                 <div className="art-related__media">
-                  {a.cover_image ? <img src={a.cover_image} alt={a.title} /> : <div className="art-related__placeholder" />}
+                  <SafeImage src={a.cover_image} alt={a.title} placeholderClassName="art-related__placeholder" />
                 </div>
                 <h3>{a.title}</h3>
                 <span>{formatDate(a.published_at)}</span>

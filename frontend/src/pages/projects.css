@@ -302,6 +302,21 @@
   display: block;
 }
 
+.pj-gallery__broken {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 220px;
+  background: linear-gradient(135deg, #4a1013 0%, #2a0508 55%, #1a0305 100%);
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.pj-gallery__broken svg {
+  width: 32px;
+  height: 32px;
+}
+
 .pj-gallery__caption {
   display: block;
   padding: 8px 10px;

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { useLanguage } from '../i18n/LanguageContext';
 import { IconEye, IconBell, IconFacebook, IconYoutube, IconTikTok, IconWhatsApp } from '../components/Icons';
+import SafeImage from '../components/SafeImage';
 import './home.css';
 
 const TAB_CATEGORIES = ['local', 'international', 'sports', 'culture', 'emission', 'musique', 'podcasts', 'jeunesse'];
@@ -28,7 +29,7 @@ function HeroCard({ article, big }) {
   if (!article) return null;
   return (
     <Link to={`/article/${article.slug}`} className={`una-hero-card ${big ? 'una-hero-card--big' : ''}`}>
-      {article.cover_image ? <img src={article.cover_image} alt={article.title} /> : <div className="una-hero-card__placeholder" />}
+      <SafeImage src={article.cover_image} alt={article.title} placeholderClassName="una-hero-card__placeholder" />
       <div className="una-hero-card__overlay" />
       <div className="una-hero-card__body">
         <span className="una-hero-card__kicker">{(article.tags && article.tags[0]?.name) || article.category_name}</span>
@@ -48,7 +49,7 @@ function ListRow({ article }) {
   return (
     <article className="una-row">
       <Link to={`/article/${article.slug}`} className="una-row__media">
-        {article.cover_image ? <img src={article.cover_image} alt={article.title} /> : <div className="una-row__placeholder" />}
+        <SafeImage src={article.cover_image} alt={article.title} placeholderClassName="una-row__placeholder" />
       </Link>
       <div className="una-row__body">
         <span className="una-row__meta">

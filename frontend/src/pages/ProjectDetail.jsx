@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../api';
 import { IconCalendar, IconImage, IconVideo } from '../components/Icons';
+import SafeImage from '../components/SafeImage';
 import './projects.css';
 
 // Un lien de vidéo est joué directement (comme le reste du site, qui n'a
@@ -56,7 +57,11 @@ export default function ProjectDetail() {
             <div className="pj-gallery">
               {project.images.map((img) => (
                 <button type="button" className="pj-gallery__item" key={img.id} onClick={() => setLightbox(img)}>
-                  <img src={img.image_url} alt={img.caption || project.title} />
+                  <SafeImage
+                    src={img.image_url}
+                    alt={img.caption || project.title}
+                    placeholder={<span className="pj-gallery__broken"><IconImage /></span>}
+                  />
                   {img.caption && <span className="pj-gallery__caption">{img.caption}</span>}
                 </button>
               ))}

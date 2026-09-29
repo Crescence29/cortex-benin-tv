@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { IconTarget, IconImage, IconVideo, IconCalendar } from '../components/Icons';
+import SafeImage from '../components/SafeImage';
 import './projects.css';
 
 export default function Projects() {
@@ -40,11 +41,11 @@ export default function Projects() {
             {projects.map((p) => (
               <Link to={`/projets/${p.slug}`} className="pj-card" key={p.id}>
                 <div className={'pj-card__cover' + (p.cover_image_url ? ' pj-card__cover--has-image' : '')}>
-                  {p.cover_image_url ? (
-                    <img src={p.cover_image_url} alt={p.title} />
-                  ) : (
-                    <span className="pj-card__cover-placeholder"><IconTarget /></span>
-                  )}
+                  <SafeImage
+                    src={p.cover_image_url}
+                    alt={p.title}
+                    placeholder={<span className="pj-card__cover-placeholder"><IconTarget /></span>}
+                  />
                 </div>
                 <div className="pj-card__body">
                   {p.period_label && <span className="pj-card__period"><IconCalendar /> {p.period_label}</span>}

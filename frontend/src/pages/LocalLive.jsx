@@ -10,6 +10,7 @@ import {
   IconPlay,
   IconCalendar,
 } from '../components/Icons';
+import SafeImage from '../components/SafeImage';
 import './locallive.css';
 
 const COMMUNES = ['Cotonou', 'Porto-Novo', 'Parakou', 'Abomey-Calavi', 'Ouidah', 'Natitingou', 'Kandi'];
@@ -187,7 +188,7 @@ export default function LocalLive() {
             {items.map((a) => (
               <Link to={`/article/${a.slug}`} key={a.id} className="ll-card">
                 <div className="ll-card__media">
-                  {a.cover_image ? <img src={a.cover_image} alt={a.title} /> : <div className="ll-card__placeholder" />}
+                  <SafeImage src={a.cover_image} alt={a.title} placeholderClassName="ll-card__placeholder" />
                 </div>
                 <div className="ll-card__body">
                   <h3>{a.title}</h3>

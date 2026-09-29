@@ -4,6 +4,7 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { api } from '../api';
 import { IconFacebook, IconWhatsApp, IconYoutube, IconTikTok, IconLinkedIn } from './Icons';
 import Logo from './Logo';
+import SafeImage from './SafeImage';
 
 const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:4000/api').replace(/\/api\/?$/, '');
 
@@ -158,7 +159,7 @@ export default function Footer() {
               {shows.length > 0 ? (
                 shows.map((e) => (
                   <span key={e.id} title={e.name} style={{ background: e.logo_url ? e.bg_color : undefined }}>
-                    {e.logo_url ? <img src={e.logo_url} alt={e.name} /> : <span className="footer-partners__text-badge">{e.name}</span>}
+                    <SafeImage src={e.logo_url} alt={e.name} placeholder={<span className="footer-partners__text-badge">{e.name}</span>} />
                   </span>
                 ))
               ) : (
@@ -174,11 +175,11 @@ export default function Footer() {
                 partners.map((p) =>
                   p.website_url ? (
                     <a key={p.id} href={p.website_url} target="_blank" rel="noopener noreferrer" title={p.name} style={{ background: p.bg_color }}>
-                      <img src={p.logo_url} alt={p.name} />
+                      <SafeImage src={p.logo_url} alt={p.name} placeholder={<span className="footer-partners__text-badge">{p.name}</span>} />
                     </a>
                   ) : (
                     <span key={p.id} title={p.name} style={{ background: p.bg_color }}>
-                      <img src={p.logo_url} alt={p.name} />
+                      <SafeImage src={p.logo_url} alt={p.name} placeholder={<span className="footer-partners__text-badge">{p.name}</span>} />
                     </span>
                   )
                 )
