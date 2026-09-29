@@ -39,7 +39,23 @@ import { registerRoutes } from './lib/apiRegistry.js';
 const app = express();
 
 app.set('trust proxy', 1);
-app.use(helmet());
+// Cette API ne sert que du JSON (et du XML pour rss.xml/sitemap.xml) —
+// jamais de HTML — donc rien n'a besoin d'être chargé par un navigateur
+// depuis ce domaine. La CSP par défaut de helmet vise les applications qui
+// rendent du HTML (styles/scripts/images à autoriser) ; ici on peut tout
+// interdire sans rien casser, ce qui évite aussi les alertes de scan sur les
+// directives larges (style-src https:/unsafe-inline) qui ne servent à rien
+// pour une API.
+app.use(helmet({
+  contentSecurityPolicy: {
+    useDefaults: false,
+    directives: {
+      defaultSrc: ["'none'"],
+      frameAncestors: ["'none'"],
+      baseUri: ["'none'"],
+    },
+  },
+}));
 
 // En dev, plusieurs instances de Vite peuvent tourner sur des ports voisins
 // (5173, 5174, ...) si un port est déjà occupé — on autorise tout localhost,
