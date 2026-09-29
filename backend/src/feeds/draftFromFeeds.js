@@ -23,10 +23,17 @@ export async function createDraftsFromNewFeedItems() {
   if (items.length === 0) return { created: 0 };
 
   const [[fallbackCategory]] = await pool.query('SELECT id FROM categories ORDER BY id LIMIT 1');
-  const [[systemAuthor]] = await pool.query(
-    "SELECT id FROM users WHERE role = 'admin' ORDER BY id LIMIT 1"
-  );
-  if (!systemAuthor) return { created: 0, skipped: items.length, reason: 'no_admin_user' };
+  // Les brouillons importés automatiquement n'ont pas de journaliste précis
+  // derrière eux : on les attribue à la rédaction ("CORTEX BENIN TV") plutôt
+  // qu'au premier compte admin trouvé, pour ne pas laisser croire qu'une
+  // personne en particulier les a écrits avant relecture.
+  const [[brandAuthor]] = await pool.query("SELECT id FROM users WHERE name = 'CORTEX BENIN TV' LIMIT 1");
+  let authorId = brandAuthor?.id;
+  if (!authorId) {
+    const [[fallbackAdmin]] = await pool.query("SELECT id FROM users WHERE role = 'admin' ORDER BY id LIMIT 1");
+    authorId = fallbackAdmin?.id;
+  }
+  if (!authorId) return { created: 0, skipped: items.length, reason: 'no_admin_user' };
 
   let created = 0;
   for (const item of items) {
@@ -43,7 +50,7 @@ export async function createDraftsFromNewFeedItems() {
       const [result] = await conn.query(
         `INSERT INTO articles (cover_image, category_id, author_id, status)
          VALUES (?, ?, ?, 'pending_review')`,
-        [item.image || null, categoryId, systemAuthor.id]
+        [item.image || null, categoryId, authorId]
       );
 
       const slug = `${slugify(item.title, { lower: true, strict: true })}-${result.insertId}`;

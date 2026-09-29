@@ -627,6 +627,32 @@
   color: var(--text);
 }
 
+.bulk-validate-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  background: color-mix(in srgb, var(--red) 8%, var(--surface));
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.bulk-validate-bar select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.bulk-validate-bar__author {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
 /* Status dots (workflow) */
 .status-dot {
   display: inline-flex;
