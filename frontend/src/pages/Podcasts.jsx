@@ -150,7 +150,7 @@ export default function Podcasts() {
         {items.length === 0 ? (
           <p className="pod-empty">Aucun contenu disponible pour le moment dans cette catégorie.</p>
         ) : (
-          <div className="pod-grid">
+          <div className="pod-grid fade-in-grid">
             {items.map((item) => (
               <EpisodeCard key={`${item.kind}-${item.id}`} item={item} />
             ))}

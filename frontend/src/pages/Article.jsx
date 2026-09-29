@@ -113,7 +113,7 @@ export default function Article() {
 
         {article.cover_image && (
           <div className="art-cover">
-            <SafeImage src={article.cover_image} alt={article.title} />
+            <SafeImage src={article.cover_image} alt={article.title} loading="eager" fetchPriority="high" />
           </div>
         )}
 

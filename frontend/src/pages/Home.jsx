@@ -29,7 +29,13 @@ function HeroCard({ article, big }) {
   if (!article) return null;
   return (
     <Link to={`/article/${article.slug}`} className={`una-hero-card ${big ? 'una-hero-card--big' : ''}`}>
-      <SafeImage src={article.cover_image} alt={article.title} placeholderClassName="una-hero-card__placeholder" />
+      <SafeImage
+        src={article.cover_image}
+        alt={article.title}
+        placeholderClassName="una-hero-card__placeholder"
+        loading={big ? 'eager' : 'lazy'}
+        fetchPriority={big ? 'high' : 'auto'}
+      />
       <div className="una-hero-card__overlay" />
       <div className="una-hero-card__body">
         <span className="una-hero-card__kicker">{(article.tags && article.tags[0]?.name) || article.category_name}</span>
@@ -173,7 +179,7 @@ export default function Home() {
           </div>
 
           {latest.length === 0 && <p className="una-empty">{t('aucun_article')}</p>}
-          <div className="una-rows">
+          <div className="una-rows fade-in-grid">
             {latest.map((a) => (
               <ListRow key={a.id} article={a} />
             ))}

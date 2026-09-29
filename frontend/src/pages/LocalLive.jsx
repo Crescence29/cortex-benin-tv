@@ -184,7 +184,7 @@ export default function LocalLive() {
         {items.length === 0 ? (
           <p className="ll-empty">Aucun article local disponible pour le moment.</p>
         ) : (
-          <div className="ll-grid">
+          <div className="ll-grid fade-in-grid">
             {items.map((a) => (
               <Link to={`/article/${a.slug}`} key={a.id} className="ll-card">
                 <div className="ll-card__media">

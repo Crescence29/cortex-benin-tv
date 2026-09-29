@@ -56,7 +56,7 @@ export default function Search() {
         {loading && <p className="src-empty">{t('recherche_en_cours')}</p>}
         {!loading && results.length === 0 && <p className="src-empty">{t('aucun_resultat')}</p>}
 
-        <div className="src-grid">
+        <div className="src-grid fade-in-grid">
           {results.map((a) => (
             <Link to={`/article/${a.slug}`} key={a.id} className="src-card">
               <div className="src-card__media">

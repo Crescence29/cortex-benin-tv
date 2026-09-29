@@ -37,7 +37,7 @@ export default function Projects() {
         ) : projects.length === 0 ? (
           <p className="pj-empty">Aucun projet publié pour le moment.</p>
         ) : (
-          <div className="pj-grid">
+          <div className="pj-grid fade-in-grid">
             {projects.map((p) => (
               <Link to={`/projets/${p.slug}`} className="pj-card" key={p.id}>
                 <div className={'pj-card__cover' + (p.cover_image_url ? ' pj-card__cover--has-image' : '')}>

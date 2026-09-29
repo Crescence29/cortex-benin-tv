@@ -158,7 +158,7 @@ export default function Category() {
               </div>
             )}
 
-            <div className="cat-rows">
+            <div className="cat-rows fade-in-grid">
               {listArticles.map((a) => (
                 <Link to={`/article/${a.slug}`} key={a.id} className="cat-row">
                   <span className="cat-row__media">

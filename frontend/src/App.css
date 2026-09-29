@@ -1093,3 +1093,34 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Légère apparition en fondu pour les grilles de cartes (accueil, catégories,
+   vidéos, recherche, projets, émissions, podcasts) : donne un rendu moins
+   figé à chaque changement de page sans dépendre du scroll (juste l'entrée
+   initiale). Le délai est échelonné via nth-child pour un effet de cascade
+   plutôt qu'un bloc qui apparaît d'un coup. */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in-grid > * {
+  animation: fade-in-up 0.45s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.fade-in-grid > *:nth-child(1) { animation-delay: 0.02s; }
+.fade-in-grid > *:nth-child(2) { animation-delay: 0.06s; }
+.fade-in-grid > *:nth-child(3) { animation-delay: 0.10s; }
+.fade-in-grid > *:nth-child(4) { animation-delay: 0.14s; }
+.fade-in-grid > *:nth-child(5) { animation-delay: 0.18s; }
+.fade-in-grid > *:nth-child(6) { animation-delay: 0.22s; }
+.fade-in-grid > *:nth-child(7) { animation-delay: 0.26s; }
+.fade-in-grid > *:nth-child(8) { animation-delay: 0.30s; }
+.fade-in-grid > *:nth-child(9) { animation-delay: 0.34s; }
+.fade-in-grid > *:nth-child(n+10) { animation-delay: 0.38s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-in-grid > * {
+    animation: none;
+  }
+}

@@ -14,5 +14,14 @@ export default function SafeImage({ src, alt, placeholderClassName, placeholder,
     return placeholderClassName ? <div className={placeholderClassName} /> : null;
   }
 
-  return <img src={src} alt={alt} onError={() => setBroken(true)} {...imgProps} />;
+  return (
+    <img
+      src={src}
+      alt={alt}
+      loading="lazy"
+      decoding="async"
+      onError={() => setBroken(true)}
+      {...imgProps}
+    />
+  );
 }

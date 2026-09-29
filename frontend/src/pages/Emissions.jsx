@@ -77,7 +77,7 @@ export default function Emissions() {
         {filtered.length === 0 ? (
           <p className="em-empty">Aucune émission disponible pour le moment.</p>
         ) : (
-          <div className="em-grid">
+          <div className="em-grid fade-in-grid">
             {filtered.map((s) => (
               <div className="em-card" key={s.id}>
                 <div className="em-card__logo" style={{ background: s.logo_url ? s.bg_color : undefined }}>

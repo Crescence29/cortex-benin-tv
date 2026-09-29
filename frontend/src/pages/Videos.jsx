@@ -145,7 +145,7 @@ export default function Videos() {
           {filtered.length === 0 ? (
             <p className="rp-empty">Aucune vidéo disponible pour le moment.</p>
           ) : (
-            <div className="rp-grid">
+            <div className="rp-grid fade-in-grid">
               {filtered.map((v) => (
                 <VideoTile key={v.id} video={v} />
               ))}
