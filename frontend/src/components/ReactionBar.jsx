@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { api } from '../api';
 import './ReactionBar.css';
 
-const EMOJIS = ['❤️', '😂', '😮', '😢', '😡'];
-const LABELS = { '❤️': "J'aime", '😂': 'Haha', '😮': 'Wow', '😢': 'Triste', '😡': 'Grrr' };
+const EMOJIS = ['❤️', '👍', '😂', '😮', '😢', '😡'];
+const LABELS = { '❤️': "J'aime", '👍': 'Top', '😂': 'Haha', '😮': 'Wow', '😢': 'Triste', '😡': 'Grrr' };
 
 function storageKey(contentType, contentId) {
   return `cortex_reaction_${contentType}_${contentId}`;

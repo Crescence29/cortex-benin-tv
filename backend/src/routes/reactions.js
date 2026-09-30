@@ -6,7 +6,7 @@ const router = Router();
 const CONTENT_TYPES = new Set(['article', 'video', 'project']);
 // Jeu d'emojis fixe (façon Facebook) — évite qu'un visiteur envoie n'importe
 // quel caractère arbitraire dans la colonne emoji.
-const ALLOWED_EMOJIS = new Set(['❤️', '😂', '😮', '😢', '😡']);
+const ALLOWED_EMOJIS = new Set(['❤️', '👍', '😂', '😮', '😢', '😡']);
 
 function validParams(contentType, contentId) {
   return CONTENT_TYPES.has(contentType) && Number.isInteger(Number(contentId)) && Number(contentId) > 0;
