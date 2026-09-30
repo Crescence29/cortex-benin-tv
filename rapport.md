@@ -42,6 +42,7 @@ Déploiement actuel (démo) :
 - Newsletter avec validation d'email réelle (vérification DNS/MX, rejet des domaines invalides)
 - Section équipe (grille statique avec animations d'entrée)
 - Icônes Lucide React sur tout le site (remplacement des SVG personnalisés)
+- **Réactions façon Facebook** (❤️ 😂 😮 😢 😡) sur Articles, Vidéos et Projets : bandeau de réaction sous chaque contenu, plusieurs emojis au choix (pas un simple "like"), compteur public par emoji. Pas de compte visiteur ni de table par utilisateur : le serveur ne garde qu'un compteur agrégé par `(type de contenu, id, emoji)` (table `content_reactions`), et c'est le `localStorage` du navigateur qui retient la réaction du visiteur pour permettre de changer d'avis ou d'annuler. Composant `ReactionBar.jsx` réutilisé tel quel sur les trois types de contenu. Testé en local sur les trois types (UI pour Articles/Vidéos, API pour Projets faute de projet publié en local) avant déploiement.
 
 ### Espace admin — Contenu
 - Gestion des articles, vidéos, émissions, podcasts (CRUD, traductions, tags, galerie)

@@ -5,6 +5,7 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { IconEye, IconFacebook, IconWhatsApp, IconLink } from '../components/Icons';
 import AudioPlayer, { isAudioUrl } from '../components/AudioPlayer';
 import SafeImage from '../components/SafeImage';
+import ReactionBar from '../components/ReactionBar';
 import { useSEO } from '../lib/useSEO';
 import './video.css';
 
@@ -100,6 +101,7 @@ export default function Video() {
 
         {video.description && <p className="vid-description">{video.description}</p>}
 
+        <ReactionBar contentType="video" contentId={video.id} />
         <ShareBar title={video.title} />
       </div>
 

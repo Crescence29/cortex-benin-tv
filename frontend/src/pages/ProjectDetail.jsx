@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { api } from '../api';
 import { IconCalendar, IconImage, IconVideo } from '../components/Icons';
 import SafeImage from '../components/SafeImage';
+import ReactionBar from '../components/ReactionBar';
 import './projects.css';
 
 // Un lien de vidéo est joué directement (comme le reste du site, qui n'a
@@ -47,6 +48,7 @@ export default function ProjectDetail() {
           {project.period_label && <span className="pj-detail-header__period"><IconCalendar /> {project.period_label}</span>}
           <h1>{project.title}</h1>
           {project.description && <p>{project.description}</p>}
+          <ReactionBar contentType="project" contentId={project.id} />
         </div>
       </section>
 

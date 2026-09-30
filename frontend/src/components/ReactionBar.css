@@ -1,0 +1,55 @@
+.reaction-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 14px 0;
+}
+
+.reaction-bar__buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.reaction-bar__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.reaction-bar__btn:hover {
+  transform: translateY(-2px);
+  border-color: var(--red);
+}
+
+.reaction-bar__btn.is-active {
+  background: color-mix(in srgb, var(--red) 12%, var(--surface));
+  border-color: var(--red);
+}
+
+.reaction-bar__emoji {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.reaction-bar__count {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.reaction-bar__btn.is-active .reaction-bar__count {
+  color: var(--red);
+}
+
+.reaction-bar__total {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}

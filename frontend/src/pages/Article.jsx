@@ -5,6 +5,7 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { IconEye, IconFacebook, IconWhatsApp, IconLink } from '../components/Icons';
 import { sanitizeHtml } from '../lib/sanitize';
 import SafeImage from '../components/SafeImage';
+import ReactionBar from '../components/ReactionBar';
 import { useSEO } from '../lib/useSEO';
 import './article.css';
 
@@ -128,6 +129,7 @@ export default function Article() {
             </div>
           )}
 
+          <ReactionBar contentType="article" contentId={article.id} />
           <ShareBar title={article.title} />
         </div>
       </article>
