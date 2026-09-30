@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../i18n/LanguageContext';
 import { api } from '../api';
-import { IconFacebook, IconWhatsApp, IconYoutube, IconTikTok, IconLinkedIn } from './Icons';
+import { IconFacebook, IconWhatsApp, IconYoutube, IconTikTok, IconLinkedIn, IconHeart } from './Icons';
 import Logo from './Logo';
 import SafeImage from './SafeImage';
 
@@ -118,6 +118,7 @@ export default function Footer() {
             <Link to="/mentions-legales">Mentions légales</Link>
             <Link to="/confidentialite">Confidentialité</Link>
           </div>
+          <Link to="/don" className="footer-donate-btn"><IconHeart /> Faire un don</Link>
         </div>
 
         <div className="footer-col">

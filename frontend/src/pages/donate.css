@@ -1,0 +1,226 @@
+.donate-hero {
+  position: relative;
+  min-height: 260px;
+  display: flex;
+  align-items: center;
+  background: linear-gradient(135deg, #150304 0%, #000 70%);
+  overflow: hidden;
+}
+
+.donate-hero__overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 15% 30%, rgba(212, 20, 31, 0.35) 0%, transparent 55%),
+    radial-gradient(circle at 85% 70%, rgba(212, 20, 31, 0.2) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.donate-hero__content {
+  position: relative;
+  z-index: 1;
+  padding: 56px 20px;
+  max-width: 640px;
+}
+
+.donate-hero__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(212, 20, 31, 0.18);
+  color: var(--red-bright);
+  margin-bottom: 16px;
+}
+
+.donate-hero__icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.donate-hero__content h1 {
+  color: #fff;
+  font-size: 2.2rem;
+  font-weight: 800;
+  margin: 0 0 12px;
+}
+
+.donate-hero__content p {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 1rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.donate-section {
+  padding: 40px 20px 60px;
+  display: flex;
+  justify-content: center;
+}
+
+.donate-card {
+  width: 100%;
+  max-width: 480px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px;
+}
+
+.donate-card h2 {
+  margin: 0 0 18px;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.donate-amounts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.donate-amounts__btn {
+  padding: 12px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.donate-amounts__btn:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.donate-amounts__btn.is-active {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+}
+
+.donate-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text);
+  margin-bottom: 16px;
+}
+
+.donate-field input {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 400;
+}
+
+.donate-hint {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  margin: 0 0 14px;
+}
+
+.donate-cancelled {
+  color: var(--red-bright);
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin: 0 0 14px;
+}
+
+.donate-fedapay-host {
+  min-height: 48px;
+  margin-bottom: 16px;
+}
+
+/* FedaPay.init() ne s'insère pas dans .donate-fedapay-host : il le
+   remplace dans le DOM par son propre élément portant la classe passée en
+   option ("donate-fedapay-btn"). Le sélecteur cible donc cette classe
+   directement, pas comme descendante du conteneur (qui n'existe plus une
+   fois le bouton injecté). */
+.donate-fedapay-btn {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--red-bright), var(--red-dark));
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.95rem;
+  text-align: center;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.donate-fedapay-btn:hover {
+  filter: brightness(1.08);
+}
+
+.donate-secure {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  text-align: center;
+  margin: 0;
+}
+
+.donate-success {
+  width: 100%;
+  max-width: 480px;
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 40px 28px;
+}
+
+.donate-success__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(26, 159, 74, 0.15);
+  color: #1a9f4a;
+  margin-bottom: 16px;
+}
+
+.donate-success__icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.donate-success h2 {
+  margin: 0 0 10px;
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.donate-success p {
+  margin: 0 0 20px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.donate-success__link {
+  display: inline-block;
+  padding: 10px 20px;
+  border-radius: 8px;
+  background: var(--red);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+}

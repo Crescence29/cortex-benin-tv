@@ -60,6 +60,7 @@ import {
   Database,
   Upload,
   Check,
+  Heart,
 } from 'lucide-react';
 
 // Thin wrapper so every icon keeps the old default size ('1em', matching the
@@ -133,6 +134,7 @@ export const IconBan = wrap(Ban);
 export const IconDatabase = wrap(Database);
 export const IconUpload = wrap(Upload);
 export const IconCheck = wrap(Check);
+export const IconHeart = wrap(Heart);
 
 // Brand marks: Lucide dropped social-network logos, so these stay as the
 // real, trademark-accurate brand SVGs (a generic icon would be less "real",

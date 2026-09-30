@@ -19,6 +19,7 @@ import Live from './pages/Live';
 import TvGrid from './pages/TvGrid';
 import About from './pages/About';
 import Contact from './pages/Contact';
+import Donate from './pages/Donate';
 import Legal from './pages/Legal';
 import Privacy from './pages/Privacy';
 import Search from './pages/Search';
@@ -116,6 +117,7 @@ export default function App() {
                   <Route path="/grille-tv" element={<TvGrid />} />
                   <Route path="/a-propos" element={<About />} />
                   <Route path="/contact" element={<Contact />} />
+                  <Route path="/don" element={<Donate />} />
                   <Route path="/mentions-legales" element={<Legal />} />
                   <Route path="/confidentialite" element={<Privacy />} />
                   <Route path="/recherche" element={<Search />} />
