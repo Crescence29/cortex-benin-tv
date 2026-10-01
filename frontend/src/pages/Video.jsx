@@ -6,6 +6,7 @@ import { IconEye, IconFacebook, IconWhatsApp, IconLink } from '../components/Ico
 import AudioPlayer, { isAudioUrl } from '../components/AudioPlayer';
 import SafeImage from '../components/SafeImage';
 import ReactionBar from '../components/ReactionBar';
+import LiveScores from '../components/LiveScores';
 import { useSEO } from '../lib/useSEO';
 import './video.css';
 
@@ -100,6 +101,8 @@ export default function Video() {
         </div>
 
         {video.description && <p className="vid-description">{video.description}</p>}
+
+        {video.category_slug === 'sports' && <LiveScores />}
 
         <ReactionBar contentType="video" contentId={video.id} />
         <ShareBar title={video.title} />
