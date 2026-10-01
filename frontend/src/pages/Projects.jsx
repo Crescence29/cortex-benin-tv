@@ -14,7 +14,7 @@ export default function Projects() {
 
   return (
     <div className="pj-page">
-      <section className="pj-hero">
+      <section className="pj-hero" style={{ '--pj-hero-image': 'url(https://images.unsplash.com/photo-1708887432819-831a459634ba?w=1600)' }}>
         <div className="pj-hero__overlay" />
         <div className="container pj-breadcrumb">
           <Link to="/">Accueil</Link>
