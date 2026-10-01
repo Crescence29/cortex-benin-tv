@@ -141,7 +141,7 @@ export default function Home() {
 
   return (
     <div className="una-page">
-      <section className="una-hero-section">
+      <section className="una-hero-section" style={{ '--una-hero-image': 'url(https://images.unsplash.com/photo-1600241005059-71de13374958?w=1600)' }}>
         <div className="una-hero-section__overlay" />
         <div className="container una-hero-section__intro">
           <nav className="una-breadcrumb" aria-label="Fil d'Ariane">

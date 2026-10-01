@@ -1,6 +1,9 @@
 .una-hero-section {
   position: relative;
-  background: linear-gradient(135deg, #2a0608 0%, #170305 55%, #0f0206 100%);
+  background:
+    linear-gradient(135deg, rgba(42, 6, 8, 0.7) 0%, rgba(23, 3, 5, 0.78) 55%, rgba(15, 2, 6, 0.85) 100%),
+    var(--una-hero-image, none) center / cover no-repeat,
+    linear-gradient(135deg, #2a0608 0%, #170305 55%, #0f0206 100%);
   overflow: hidden;
   padding-bottom: 40px;
 }
