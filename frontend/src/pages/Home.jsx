@@ -4,6 +4,7 @@ import { api } from '../api';
 import { useLanguage } from '../i18n/LanguageContext';
 import { IconEye, IconBell, IconFacebook, IconYoutube, IconTikTok, IconWhatsApp } from '../components/Icons';
 import SafeImage from '../components/SafeImage';
+import Skeleton from '../components/Skeleton';
 import './home.css';
 
 const TAB_CATEGORIES = ['local', 'international', 'sports', 'culture', 'emission', 'musique', 'podcasts', 'jeunesse'];
@@ -111,9 +112,12 @@ export default function Home() {
   const [categories, setCategories] = useState([]);
   const [activeTab, setActiveTab] = useState('tout');
   const [feedItems, setFeedItems] = useState([]);
+  const [heroLoading, setHeroLoading] = useState(true);
+  const [latestLoading, setLatestLoading] = useState(true);
 
   useEffect(() => {
-    api.getArticles({ lang, featured: 'true', limit: 4 }).then(setFeatured).catch(() => setFeatured([]));
+    setHeroLoading(true);
+    api.getArticles({ lang, featured: 'true', limit: 4 }).then(setFeatured).catch(() => setFeatured([])).finally(() => setHeroLoading(false));
     api.getArticles({ lang, sort: 'views', limit: 10 })
       .then((rows) => setMostRead(rows.filter((a) => a.category_slug !== 'international').slice(0, 5)))
       .catch(() => setMostRead([]));
@@ -122,9 +126,10 @@ export default function Home() {
   }, [lang]);
 
   useEffect(() => {
+    setLatestLoading(true);
     const params = { lang, limit: 8 };
     if (activeTab !== 'tout') params.category = activeTab;
-    api.getArticles(params).then(setLatest).catch(() => setLatest([]));
+    api.getArticles(params).then(setLatest).catch(() => setLatest([])).finally(() => setLatestLoading(false));
   }, [lang, activeTab]);
 
   const tabs = useMemo(
@@ -152,7 +157,16 @@ export default function Home() {
           </p>
         </div>
 
-        {hero && (
+        {heroLoading ? (
+          <div className="container una-hero-grid">
+            <Skeleton className="una-hero-card una-hero-card--big" style={{ aspectRatio: '16/10' }} />
+            <div className="una-hero-grid__side">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="una-hero-card" style={{ aspectRatio: '16/9' }} />
+              ))}
+            </div>
+          </div>
+        ) : hero && (
           <div className="container una-hero-grid">
             <HeroCard article={hero} big />
             <div className="una-hero-grid__side">
@@ -178,14 +192,31 @@ export default function Home() {
             ))}
           </div>
 
-          {latest.length === 0 && <p className="una-empty">{t('aucun_article')}</p>}
-          <div className="una-rows fade-in-grid">
-            {latest.map((a) => (
-              <ListRow key={a.id} article={a} />
-            ))}
-          </div>
+          {latestLoading ? (
+            <div className="una-rows">
+              {[1, 2, 3, 4].map((i) => (
+                <article className="una-row" key={i} style={{ pointerEvents: 'none' }}>
+                  <Skeleton className="una-row__media" style={{ aspectRatio: '4/3' }} />
+                  <div className="una-row__body">
+                    <Skeleton style={{ width: '35%', height: 12, marginBottom: 10 }} />
+                    <Skeleton style={{ width: '90%', height: 18, marginBottom: 8 }} />
+                    <Skeleton style={{ width: '60%', height: 14 }} />
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <>
+              {latest.length === 0 && <p className="una-empty">{t('aucun_article')}</p>}
+              <div className="una-rows fade-in-grid">
+                {latest.map((a) => (
+                  <ListRow key={a.id} article={a} />
+                ))}
+              </div>
+            </>
+          )}
 
-          {latest.length > 0 && (
+          {!latestLoading && latest.length > 0 && (
             <Link to={`/rubrique/${activeTab === 'tout' ? (tabs[0]?.slug || 'local') : activeTab}`} className="una-more-btn">
               Voir plus d'articles
             </Link>

@@ -153,7 +153,7 @@ Déploiement actuel (démo) :
 
 - [x] ~~Vrai système d'upload de fichiers avec stockage externe~~ — fait le 28/09 (Cloudinary), voir §3
 - [ ] **Audit visuel du site public (suite)** — points 4 à 6 identifiés le 29/09, restants après (1) images cassées et (2-3) lazy-loading/animations déjà corrigés :
-  - [ ] Skeleton loaders à la place du texte "Chargement…" (Home, Videos, Category en priorité)
+  - [x] ~~Skeleton loaders à la place du texte "Chargement…" (Home, Videos, Category en priorité)~~ — fait le 01/10 : composant `Skeleton.jsx` réutilisable (effet shimmer, respecte `prefers-reduced-motion`), formes calquées sur le contenu réel (carte héro, lignes d'articles, tuiles vidéo)
   - [ ] Indice visuel (flèche/dégradé) sur la barre de catégories qui défile horizontalement, pour signaler qu'elle est scrollable
   - [ ] Revoir les photos génériques/stock utilisées sur certaines vidéos (cassent l'identité visuelle)
 - [ ] Gérer les endpoints/routes d'`articles.js` et `videos.js` : gate déjà en place pour `canPublishDirectly`, à re-vérifier après tout futur changement de hiérarchie

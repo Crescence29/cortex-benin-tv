@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { IconReplay, IconSearch, IconEye, IconGrid } from '../components/Icons';
 import SafeImage from '../components/SafeImage';
+import Skeleton from '../components/Skeleton';
 import './videos.css';
 
 const RECENT_KEY = 'cortex_recent_videos';
@@ -71,6 +72,7 @@ export default function Videos() {
   const [query, setQuery] = useState(searchParams.get('program') || '');
   const [mostWatched, setMostWatched] = useState([]);
   const [recentVideos, setRecentVideos] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     api.getCategories({ lang: 'fr' }).then(setCategories).catch(() => setCategories([]));
@@ -78,10 +80,11 @@ export default function Videos() {
   }, []);
 
   useEffect(() => {
+    setLoading(true);
     const params = { lang: 'fr', limit: 24 };
     if (activeCategory !== 'tout') params.category = activeCategory;
     if (sort === 'views') params.sort = 'views';
-    api.getVideos(params).then(setVideos).catch(() => setVideos([]));
+    api.getVideos(params).then(setVideos).catch(() => setVideos([])).finally(() => setLoading(false));
   }, [activeCategory, sort]);
 
   useEffect(() => {
@@ -142,7 +145,19 @@ export default function Videos() {
           <div className="rp-section__header">
             <h2>{activeCategory === 'tout' ? 'Toutes les vidéos' : categories.find((c) => c.slug === activeCategory)?.name}</h2>
           </div>
-          {filtered.length === 0 ? (
+          {loading ? (
+            <div className="rp-grid">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div className="rp-tile" key={i} style={{ pointerEvents: 'none' }}>
+                  <Skeleton className="rp-tile__media" style={{ aspectRatio: '16/9' }} />
+                  <div className="rp-tile__body">
+                    <Skeleton style={{ width: '50%', height: 12, marginBottom: 8 }} />
+                    <Skeleton style={{ width: '85%', height: 18 }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
             <p className="rp-empty">Aucune vidéo disponible pour le moment.</p>
           ) : (
             <div className="rp-grid fade-in-grid">

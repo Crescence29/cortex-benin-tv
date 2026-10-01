@@ -4,6 +4,7 @@ import { api } from '../api';
 import { useLanguage } from '../i18n/LanguageContext';
 import { IconEye, IconPlay, IconMail } from '../components/Icons';
 import SafeImage from '../components/SafeImage';
+import Skeleton from '../components/Skeleton';
 import { useSEO } from '../lib/useSEO';
 import './category.css';
 
@@ -90,11 +91,38 @@ export default function Category() {
   const sideFeatured = featured.filter((a) => a.id !== hero?.id).slice(0, 4);
   const listArticles = filtered.filter((a) => a.id !== hero?.id);
 
-  if (loading) {
-    return <div className="container section"><p>{t('chargement')}</p></div>;
-  }
-
   const heroImage = HERO_IMAGES[slug];
+
+  if (loading) {
+    return (
+      <div className="cat-page">
+        <section className="cat-hero" style={heroImage ? { '--cat-hero-image': `url(${heroImage})` } : undefined}>
+          <div className="cat-hero__overlay" />
+          <div className="container cat-hero__intro">
+            <h1>{categoryName?.toUpperCase()}</h1>
+          </div>
+        </section>
+        <div className="container cat-layout">
+          <div className="cat-main">
+            <Skeleton className="cat-hero-card" style={{ height: 360, marginBottom: 24 }} />
+            {[1, 2, 3, 4].map((i) => (
+              <div className="cat-row" key={i} style={{ pointerEvents: 'none' }}>
+                <Skeleton className="cat-row__media" style={{ aspectRatio: '16/10' }} />
+                <span className="cat-row__body">
+                  <Skeleton style={{ width: '40%', height: 14, marginBottom: 10 }} />
+                  <Skeleton style={{ width: '90%', height: 20, marginBottom: 8 }} />
+                  <Skeleton style={{ width: '70%', height: 20 }} />
+                </span>
+              </div>
+            ))}
+          </div>
+          <aside className="cat-sidebar">
+            <Skeleton style={{ height: 220 }} />
+          </aside>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="cat-page">
