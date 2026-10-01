@@ -142,13 +142,15 @@ export default function Footer() {
         <div className="footer-col">
           <h3>Newsletter</h3>
           <NewsletterForm />
-          <a href={`${API_ORIGIN}/rss.xml`} target="_blank" rel="noopener noreferrer" style={{ marginTop: 14, display: 'inline-block' }}>
-            Flux RSS
-          </a>
-          <Link to="/desabonnement" style={{ marginTop: 8, display: 'inline-block', fontSize: '0.78rem' }}>
-            Se désabonner
-          </Link>
-          <Link to="/don" className="footer-donate-btn"><IconHeart /> Faire un don</Link>
+          <div className="footer-newsletter-links">
+            <a href={`${API_ORIGIN}/rss.xml`} target="_blank" rel="noopener noreferrer">
+              Flux RSS
+            </a>
+            <Link to="/desabonnement" style={{ fontSize: '0.78rem' }}>
+              Se désabonner
+            </Link>
+            <Link to="/don" className="footer-donate-btn"><IconHeart /> Faire un don</Link>
+          </div>
         </div>
       </div>
 
