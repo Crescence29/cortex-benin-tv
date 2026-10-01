@@ -118,7 +118,6 @@ export default function Footer() {
             <Link to="/mentions-legales">Mentions légales</Link>
             <Link to="/confidentialite">Confidentialité</Link>
           </div>
-          <Link to="/don" className="footer-donate-btn"><IconHeart /> Faire un don</Link>
         </div>
 
         <div className="footer-col">
@@ -149,6 +148,7 @@ export default function Footer() {
           <Link to="/desabonnement" style={{ marginTop: 8, display: 'inline-block', fontSize: '0.78rem' }}>
             Se désabonner
           </Link>
+          <Link to="/don" className="footer-donate-btn"><IconHeart /> Faire un don</Link>
         </div>
       </div>
 

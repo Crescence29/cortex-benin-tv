@@ -529,6 +529,7 @@
 
 .footer-donate-btn {
   display: inline-flex;
+  align-self: flex-start;
   align-items: center;
   gap: 7px;
   margin-top: 14px;
