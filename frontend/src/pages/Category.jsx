@@ -26,8 +26,8 @@ function formatViews(n = 0) {
 const UNAVAILABLE_CATEGORIES = ['international'];
 
 const HERO_IMAGES = {
-  local: '/image/local.jpg',
-  culture: '/image/culture.jpg',
+  local: 'https://images.unsplash.com/photo-1653894644705-4dcec1db7c17?w=1600',
+  culture: 'https://images.unsplash.com/photo-1655682603240-03df03520988?w=1600',
   musique: '/image/musique.jpg',
   sports: '/image/sports.jpg',
   jeunesse: '/image/jeunesse.jpg',
