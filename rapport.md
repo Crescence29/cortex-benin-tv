@@ -158,6 +158,7 @@ Déploiement actuel (démo) :
   - [ ] Revoir les photos génériques/stock utilisées sur certaines vidéos (cassent l'identité visuelle)
 - [ ] Gérer les endpoints/routes d'`articles.js` et `videos.js` : gate déjà en place pour `canPublishDirectly`, à re-vérifier après tout futur changement de hiérarchie
 - [ ] Application de la partie "Gestion de l'API" — vérifier long terme la pertinence de suivre plus finement les erreurs 4xx/5xx par route
+- [x] ~~Mise en veille du backend Render gratuit après inactivité (page vidéo/article bloquée sur "Chargement…" ~50s au réveil)~~ — atténué le 01/10 : moniteur UptimeRobot gratuit qui ping `/api/health` toutes les 5 min pour empêcher la mise en veille. Solution de contournement, pas définitive (voir ligne suivante)
 - [ ] Migration vers un hébergement définitif (Hostinger pressenti) pour lever les limitations Render/Aiven gratuits (veille, cron horaire fiable)
 - [ ] Une fois sur l'hébergement définitif : réactiver/adapter le pipeline cron horaire de brouillons sans le contournement `/api/cron/tick`
 - [ ] Achat du nom de domaine `.bj` (registrar retenu : Netim, à confirmer/finaliser)
