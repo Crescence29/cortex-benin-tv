@@ -1,7 +1,8 @@
 .pod-hero {
   position: relative;
+  min-height: 320px;
   background:
-    linear-gradient(135deg, rgba(21, 3, 4, 0.72) 0%, rgba(0, 0, 0, 0.78) 65%, rgba(10, 10, 13, 0.82) 100%),
+    linear-gradient(135deg, rgba(21, 3, 4, 0.6) 0%, rgba(0, 0, 0, 0.68) 65%, rgba(10, 10, 13, 0.75) 100%),
     url('/image/podcasts.jpg') center / cover no-repeat,
     linear-gradient(135deg, #150304 0%, #000 65%, #0a0a0d 100%);
   overflow: hidden;
