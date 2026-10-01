@@ -5,6 +5,7 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { IconEye, IconPlay, IconMail } from '../components/Icons';
 import SafeImage from '../components/SafeImage';
 import Skeleton from '../components/Skeleton';
+import LiveScores from '../components/LiveScores';
 import { useSEO } from '../lib/useSEO';
 import './category.css';
 
@@ -209,6 +210,7 @@ export default function Category() {
           </div>
 
           <aside className="cat-sidebar">
+            {slug === 'sports' && <LiveScores />}
             {sideFeatured.length > 0 && (
               <div className="cat-side-card">
                 <h3>À la une</h3>

@@ -115,6 +115,7 @@ export const api = {
     });
   },
   getMediaGallery: (folder, type) => request(`/media/gallery?folder=${encodeURIComponent(folder)}&type=${type}`),
+  getLiveScores: () => request('/sports/live'),
   getReactions: (contentType, contentId) => request(`/reactions/${contentType}/${contentId}`),
   sendReaction: (contentType, contentId, emoji, action) =>
     request(`/reactions/${contentType}/${contentId}`, { method: 'POST', body: JSON.stringify({ emoji, action }) }),

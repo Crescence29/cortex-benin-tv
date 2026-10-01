@@ -162,7 +162,7 @@ Déploiement actuel (démo) :
 - [ ] Une fois sur l'hébergement définitif : réactiver/adapter le pipeline cron horaire de brouillons sans le contournement `/api/cron/tick`
 - [ ] Achat du nom de domaine `.bj` (registrar retenu : Netim, à confirmer/finaliser)
 - [ ] Toute intégration de flux sportif en direct nécessite une licence de diffusion officielle (non disponible actuellement — voir section erreurs/refus)
-- [ ] (Optionnel, si demandé) Système de scores/calendrier de matchs via une API sportive légitime (pas de vidéo)
+- [x] ~~(Optionnel, si demandé) Système de scores/calendrier de matchs via une API sportive légitime (pas de vidéo)~~ — fait le 01/10 avec API-Football (api-sports.io), plan gratuit : composant `LiveScores.jsx` affiché sur la page Sports, scores des matchs **actuellement en direct uniquement** (Championnat du Bénin, CAN/CHAN/Ligue des champions CAF, Écureuils, Premier League, Ligue 1, La Liga, Serie A, Bundesliga). Limites réelles du plan gratuit vérifiées avant de construire : pas d'accès à la saison en cours pour la plupart des championnats (dont le championnat béninois, limité aux saisons 2022-2024), paramètre "next" (calendrier à venir) bloqué, dates limitées à ~2 jours — donc pas de vrai calendrier à l'avance, juste ce qui se joue en ce moment. Basket béninois indisponible (aucune donnée chez ce fournisseur, quel que soit le plan). Backend met en cache les résultats 60s pour respecter le quota (variable `API_FOOTBALL_KEY` sur Render)
 
 ---
 
