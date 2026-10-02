@@ -177,7 +177,8 @@ export default function Projects() {
         </div>
       </div>
 
-      <form onSubmit={onSubmit} className="admin-form" style={{ marginBottom: 24 }}>
+      <div className="projects-admin-layout">
+      <form onSubmit={onSubmit} className="admin-form">
         {error && <p className="admin-form__error">{error}</p>}
         <label>
           Titre
@@ -256,12 +257,13 @@ export default function Projects() {
         </div>
       </form>
 
-      <div className="admin-panel">
+      <div className="admin-panel projects-admin-layout__list">
         <div className="admin-panel__header">
           <h2>Projets ({items.length})</h2>
         </div>
         {items.length === 0 && <div className="admin-empty">Aucun projet pour le moment.</div>}
         {items.length > 0 && (
+          <div style={{ overflowX: 'auto' }}>
           <table className="data-table">
             <thead>
               <tr><th>Titre</th><th>Période</th><th>Affiches</th><th>Vidéos</th><th>Statut</th><th></th></tr>
@@ -290,7 +292,9 @@ export default function Projects() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
+      </div>
       </div>
     </AdminLayout>
   );
