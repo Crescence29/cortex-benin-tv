@@ -437,44 +437,25 @@
   color: var(--text);
 }
 
-.site-nav-wrap {
-  position: relative;
-}
-
 .site-nav {
   display: flex;
-  gap: 30px;
+  flex-wrap: wrap;
+  gap: 8px 30px;
   padding: 12px 0;
-  overflow-x: auto;
-  scrollbar-width: none;
 }
 
-.site-nav::-webkit-scrollbar {
-  display: none;
-}
+/* Mobile : toutes les rubriques restent visibles, sur deux rangées,
+   sans avoir à faire défiler la barre. */
+@media (max-width: 640px) {
+  .site-nav {
+    gap: 8px 14px;
+    justify-content: space-between;
+    padding: 10px 0;
+  }
 
-.site-nav__fade {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 36px;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.site-nav__fade.is-visible {
-  opacity: 1;
-}
-
-.site-nav__fade--left {
-  left: 20px;
-  background: linear-gradient(90deg, var(--surface), transparent);
-}
-
-.site-nav__fade--right {
-  right: 20px;
-  background: linear-gradient(270deg, var(--surface), transparent);
+  .site-nav .site-nav__link {
+    font-size: 0.74rem;
+  }
 }
 
 .site-nav__link {

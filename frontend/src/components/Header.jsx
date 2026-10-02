@@ -1,5 +1,5 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import ThemeToggle from './ThemeToggle';
 import LanguageSelect from './LanguageSelect';
 import { IconPlay, IconMic, IconSearch, IconMenu, IconBroadcast, IconReplay, IconMapPin } from './Icons';
@@ -17,29 +17,9 @@ export default function Header() {
   const [isLive, setIsLive] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
-  const siteNavRef = useRef(null);
-  const [navScroll, setNavScroll] = useState({ left: false, right: false });
 
   useEffect(() => {
     api.getLive('local').then((l) => setIsLive(!!l.is_live)).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    const el = siteNavRef.current;
-    if (!el) return;
-    function update() {
-      setNavScroll({
-        left: el.scrollLeft > 4,
-        right: el.scrollLeft + el.clientWidth < el.scrollWidth - 4,
-      });
-    }
-    update();
-    el.addEventListener('scroll', update, { passive: true });
-    window.addEventListener('resize', update);
-    return () => {
-      el.removeEventListener('scroll', update);
-      window.removeEventListener('resize', update);
-    };
   }, []);
 
   const PRIMARY_NAV = [
@@ -130,7 +110,7 @@ export default function Header() {
       <div className="site-header__divider" />
 
       <div className="site-nav-wrap container">
-        <nav className="site-nav" ref={siteNavRef}>
+        <nav className="site-nav">
           {RUBRIQUES.map((item) => (
             <NavLink
               key={item.to}
@@ -141,8 +121,6 @@ export default function Header() {
             </NavLink>
           ))}
         </nav>
-        <span className={'site-nav__fade site-nav__fade--left' + (navScroll.left ? ' is-visible' : '')} />
-        <span className={'site-nav__fade site-nav__fade--right' + (navScroll.right ? ' is-visible' : '')} />
       </div>
 
       <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
