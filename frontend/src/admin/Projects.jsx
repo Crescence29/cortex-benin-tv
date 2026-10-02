@@ -16,7 +16,45 @@ const emptyForm = {
   videos: [],
 };
 
-function RepeatableUrlList({ label, icon: Icon, items, urlKey, labelKey, urlPlaceholder, labelPlaceholder, onChange, folder, mediaType }) {
+// ISO UTC (base de données) <-> valeur d'un <input type="datetime-local">
+// exprimée dans le fuseau horaire du navigateur de la rédaction.
+function isoToLocalInput(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function localInputToIso(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? '' : d.toISOString();
+}
+
+function ScheduleField({ value, onChange }) {
+  const scheduled = value && new Date(value).getTime() > Date.now();
+  return (
+    <div className="project-repeatable__schedule">
+      <label>
+        Publier le (date et heure)
+        <input
+          type="datetime-local"
+          value={isoToLocalInput(value)}
+          onChange={(e) => onChange(localInputToIso(e.target.value))}
+        />
+      </label>
+      {value && (
+        <button type="button" className="link-btn" onClick={() => onChange('')}>Publier maintenant</button>
+      )}
+      <span className={'project-repeatable__schedule-status' + (scheduled ? ' is-scheduled' : '')}>
+        {!value ? 'Visible immédiatement' : scheduled ? 'Programmée — pas encore visible' : 'Déjà publiée'}
+      </span>
+    </div>
+  );
+}
+
+function RepeatableUrlList({ label, icon: Icon, items, urlKey, labelKey, urlPlaceholder, labelPlaceholder, onChange, folder, mediaType, schedulable = false }) {
   function updateItem(i, field, value) {
     const next = items.slice();
     next[i] = { ...next[i], [field]: value };
@@ -55,6 +93,9 @@ function RepeatableUrlList({ label, icon: Icon, items, urlKey, labelKey, urlPlac
           <button type="button" className="btn btn--sm btn--outline btn--danger" onClick={() => removeItem(i)} title="Retirer">
             <IconTrash />
           </button>
+          {schedulable && (
+            <ScheduleField value={item.publish_at || ''} onChange={(v) => updateItem(i, 'publish_at', v)} />
+          )}
         </div>
       ))}
     </div>
@@ -83,7 +124,7 @@ export default function Projects() {
       cover_image_url: item.cover_image_url || '',
       is_published: !!item.is_published,
       sort_order: item.sort_order,
-      images: item.images.map((i) => ({ image_url: i.image_url, caption: i.caption || '' })),
+      images: item.images.map((i) => ({ image_url: i.image_url, caption: i.caption || '', publish_at: i.publish_at || '' })),
       videos: item.videos.map((v) => ({ video_url: v.video_url, title: v.title || '' })),
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -184,6 +225,7 @@ export default function Projects() {
           onChange={(images) => setForm({ ...form, images })}
           folder={slugifyClient(form.title)}
           mediaType="image"
+          schedulable
         />
 
         <RepeatableUrlList

@@ -6,12 +6,19 @@ import { isSafeUrl } from '../lib/sanitize.js';
 
 const router = Router();
 
-async function attachChildren(projects) {
+// publish_at est stockée en UTC ; on la renvoie en ISO (suffixe Z) pour que le
+// navigateur la convertisse dans le fuseau du visiteur/de la rédaction.
+const PUBLISH_AT_ISO = "DATE_FORMAT(publish_at, '%Y-%m-%dT%H:%i:%s.000Z')";
+
+// publicOnly : n'expose que les affiches déjà publiées (publish_at vide ou passé).
+async function attachChildren(projects, { publicOnly = false } = {}) {
   if (projects.length === 0) return projects;
   const ids = projects.map((p) => p.id);
   const placeholders = ids.map(() => '?').join(',');
+  const visibility = publicOnly ? ' AND (publish_at IS NULL OR publish_at <= UTC_TIMESTAMP())' : '';
   const [images] = await pool.query(
-    `SELECT * FROM project_images WHERE project_id IN (${placeholders}) ORDER BY sort_order, id`,
+    `SELECT id, project_id, image_url, caption, sort_order, ${PUBLISH_AT_ISO} AS publish_at
+     FROM project_images WHERE project_id IN (${placeholders})${visibility} ORDER BY sort_order, id`,
     ids
   );
   const [videos] = await pool.query(
@@ -30,7 +37,7 @@ router.get('/', async (_req, res) => {
   const [rows] = await pool.query(
     'SELECT * FROM projects WHERE is_published = TRUE ORDER BY sort_order, created_at DESC'
   );
-  res.json(await attachChildren(rows));
+  res.json(await attachChildren(rows, { publicOnly: true }));
 });
 
 router.get('/admin/all', requireAuth, async (_req, res) => {
@@ -51,13 +58,23 @@ router.get('/:slug', async (req, res) => {
     [req.params.slug]
   );
   if (!project) return res.status(404).json({ error: 'Projet introuvable' });
-  const [withChildren] = await attachChildren([project]);
+  const [withChildren] = await attachChildren([project], { publicOnly: true });
   res.json(withChildren);
 });
+
+// Date ISO envoyée par le navigateur -> 'YYYY-MM-DD HH:MM:SS' en UTC.
+// null si vide, undefined si invalide.
+function toUtcSql(value) {
+  if (!value) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return undefined;
+  return d.toISOString().slice(0, 19).replace('T', ' ');
+}
 
 function validateChildren(images = [], videos = []) {
   for (const img of images) {
     if (!img.image_url || !isSafeUrl(img.image_url)) return "URL d'affiche/flyer invalide (http ou https requis)";
+    if (toUtcSql(img.publish_at) === undefined) return 'Date de publication invalide';
   }
   for (const vid of videos) {
     if (!vid.video_url || !isSafeUrl(vid.video_url)) return 'URL de vidéo invalide (http ou https requis)';
@@ -71,8 +88,8 @@ async function replaceChildren(conn, projectId, images = [], videos = []) {
   for (let i = 0; i < images.length; i += 1) {
     const img = images[i];
     await conn.query(
-      'INSERT INTO project_images (project_id, image_url, caption, sort_order) VALUES (?, ?, ?, ?)',
-      [projectId, img.image_url, img.caption || null, i]
+      'INSERT INTO project_images (project_id, image_url, caption, publish_at, sort_order) VALUES (?, ?, ?, ?, ?)',
+      [projectId, img.image_url, img.caption || null, toUtcSql(img.publish_at), i]
     );
   }
   for (let i = 0; i < videos.length; i += 1) {
@@ -149,7 +166,10 @@ router.put('/:id', requireAuth, async (req, res) => {
       ]
     );
     if (images !== undefined || videos !== undefined) {
-      const [existingImages] = await conn.query('SELECT image_url, caption, sort_order FROM project_images WHERE project_id = ?', [req.params.id]);
+      const [existingImages] = await conn.query(
+        `SELECT image_url, caption, ${PUBLISH_AT_ISO} AS publish_at, sort_order FROM project_images WHERE project_id = ? ORDER BY sort_order, id`,
+        [req.params.id]
+      );
       const [existingVideos] = await conn.query('SELECT video_url, title, sort_order FROM project_videos WHERE project_id = ?', [req.params.id]);
       await replaceChildren(conn, req.params.id, images ?? existingImages, videos ?? existingVideos);
     }
