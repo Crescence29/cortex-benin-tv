@@ -912,9 +912,42 @@
   align-items: start;
 }
 
-@media (min-width: 1100px) {
+/* Tableau des projets : pas de largeur minimale forcée, colonnes courtes
+   sur une seule ligne, titre et période libres de passer à la ligne. */
+.projects-table {
+  min-width: 0;
+  table-layout: auto;
+}
+
+.projects-table th,
+.projects-table td {
+  padding: 8px 8px;
+}
+
+.projects-table th:nth-child(n+3),
+.projects-table td:nth-child(n+3) {
+  white-space: nowrap;
+}
+
+.projects-table th:nth-child(3),
+.projects-table th:nth-child(4),
+.projects-table td:nth-child(3),
+.projects-table td:nth-child(4) {
+  text-align: center;
+  width: 1%;
+}
+
+.projects-table td:first-child {
+  min-width: 120px;
+}
+
+.projects-table td:nth-child(2) {
+  min-width: 90px;
+}
+
+@media (min-width: 1400px) {
   .projects-admin-layout {
-    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
   }
 
   .projects-admin-layout__list {

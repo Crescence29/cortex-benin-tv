@@ -264,7 +264,7 @@ export default function Projects() {
         {items.length === 0 && <div className="admin-empty">Aucun projet pour le moment.</div>}
         {items.length > 0 && (
           <div style={{ overflowX: 'auto' }}>
-          <table className="data-table">
+          <table className="data-table data-table--compact projects-table">
             <thead>
               <tr><th>Titre</th><th>Période</th><th>Affiches</th><th>Vidéos</th><th>Statut</th><th></th></tr>
             </thead>
