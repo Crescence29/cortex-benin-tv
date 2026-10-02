@@ -6,6 +6,9 @@ import { getInitialTheme, applyTheme } from './theme.js';
 import './index.css';
 import App from './App.jsx';
 import { api } from './api.js';
+import { startAutoUpdate } from './lib/autoUpdate.js';
+
+startAutoUpdate();
 
 // Applique le thème sauvegardé avant le premier rendu, sur TOUTES les pages
 // (site public ET dashboard admin) — évite un thème incohérent au chargement.

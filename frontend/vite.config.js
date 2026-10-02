@@ -7,7 +7,10 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt' + enregistrement manuel (src/lib/autoUpdate.js) : le rechargement
+      // après mise à jour est différé tant qu'un formulaire est en cours de saisie.
+      registerType: 'prompt',
+      injectRegister: false,
       includeAssets: ['favicon.svg', 'logo.png'],
       manifest: {
         name: 'Cortex Bénin TV',
